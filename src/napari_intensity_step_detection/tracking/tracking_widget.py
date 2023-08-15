@@ -1,14 +1,15 @@
 from pathlib import Path
 import napari
 from napari.utils import progress
-from qtpy.QtWidgets import QWidget
+from qtpy.QtWidgets import QWidget, QListWidgetItem
+from qtpy.QtCore import Signal
 from napari_intensity_step_detection.base.base_widget import NLayerWidget
 import pandas as pd
 import warnings
 # from napari_intensity_step_detection.base.plots import HistogramWidget
 from qtpy import uic
 import numpy as np
-
+import copy
 
 class Labels:
     tracks_layer = "All Tracks"
@@ -20,6 +21,41 @@ class Labels:
                          'intensity_max', 'intensity_mean', 'intensity_min']
     track_table_header = ['label', 'y', 'x', 'intensity_mean',
                           'intensity_max', 'intensity_min', 'area', 'frame', 'track_id']
+
+
+class FilterItem(QWidget):
+    removeClicked = Signal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        UI_FILE = Path(__file__).resolve().parent.parent.joinpath(
+            'ui', 'filter_list_item_widget.ui')
+        self.load_ui(UI_FILE)
+        self.setMin(0)
+        self.setMax(0)
+        self.setProperty("Untitled")
+        self.btnRemove.clicked.connect(self.removeClicked)
+
+    def setMin(self, val):
+        self.lbMin.setText(str(val))
+
+    def min(self):
+        return int(self.lbMin.text())
+
+    def setMax(self, val):
+        self.lbMax.setText(str(val))
+
+    def max(self):
+        return int(self.lbMax.text())
+
+    def setProperty(self, val):
+        self.lbProperty.setText(str(val))
+
+    def property(self):
+        return int(self.lbProperty.text())
+
+    def load_ui(self, path):
+        uic.loadUi(path, self)
 
 
 class _tracking_ui(QWidget):
@@ -60,7 +96,15 @@ class TrackingWidget(NLayerWidget):
     def add_filter(self):
         filter_range = self.ui.slFilter.value()
         filter_property = self.ui.cbProperties.currentText()
-        # self.ui.filterList.addItem()
+        _item = QListWidgetItem()
+        _fitler_item = FilterItem(self)
+        _fitler_item.setMin(filter_range[0])
+        _fitler_item.setMax(filter_range[1])
+        _fitler_item.setProperty(filter_property)
+
+        _item.setSizeHint(_fitler_item.sizeHint())
+        self.ui.filterList.addItem(_item)
+        self.ui.filterList.setItemWidget(_item, _fitler_item)
 
     def apply_filter(self, vrange, property, meta, tracks):
         vmin, vmax = vrange
@@ -101,10 +145,10 @@ class TrackingWidget(NLayerWidget):
         self.all_tracks_df = tracks_df
         self.all_tracks_meta = track_meta
 
-        self.d_all_tracks = tracks
-        self.d_all_tracks_properties = properties
-        self.d_all_tracks_df = tracks_df
-        self.d_all_tracks_meta = track_meta
+        self.d_all_tracks = copy.deepcopy(tracks)
+        self.d_all_tracks_properties = copy.deepcopy(properties)
+        self.d_all_tracks_df = copy.deepcopy(tracks_df)
+        self.d_all_tracks_meta = copy.deepcopy(track_meta)
 
         _add_to_viewer(self.viewer, Labels.tracks_layer, tracks, properties=properties,
                        metadata={Labels.tracks_meta: track_meta,

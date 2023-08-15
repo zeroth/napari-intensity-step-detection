@@ -18,6 +18,7 @@ class FileEditWidget(QWidget):
     def __init__(self, parent: QWidget = None):
         super().__init__(parent)
         self.setLayout(QVBoxLayout())
+        self.layout().setContentsMargins(0, 0, 0, 0)
         self.layout().addWidget(QLabel("Classifier file"))
         self.filename_edit = FileEdit(
             mode=FileDialogMode.OPTIONAL_FILE,
