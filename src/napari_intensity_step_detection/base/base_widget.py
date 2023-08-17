@@ -19,7 +19,7 @@ class NLayerWidget(QWidget):
         self.main_layout.addWidget(self.msg_label)
         self.main_layout.addLayout(self.cmb_form_layout)
         self.setLayout(self.main_layout)
-
+        self.layers_hooks = []
         if self.viewer:
             self.viewer.layers.events.inserted.connect(
                 self.viewer_layer_updated)
@@ -30,6 +30,8 @@ class NLayerWidget(QWidget):
         for name, dtype in self.layer_filter.items():
             if isinstance(event.value, dtype):
                 self.update_combo(name, dtype)
+        for f in self.layers_hooks:
+            f(event)
 
     def update_combo(self, name, dtype, is_internal=False):
         combo_box = self.layers_combo_container.get(name, QComboBox())

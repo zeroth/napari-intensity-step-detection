@@ -6,7 +6,6 @@ from qtpy.QtCore import Signal
 from napari_intensity_step_detection.base.base_widget import NLayerWidget
 import pandas as pd
 import warnings
-# from napari_intensity_step_detection.base.plots import HistogramWidget
 from qtpy import uic
 import numpy as np
 import copy
@@ -68,8 +67,6 @@ class _tracking_ui(QWidget):
         self.sbSearchRange.setValue(2)
         self.sbMemory.setValue(1)
         self.slFilter.setTracking(False)
-        self.filterTable.setHorizontalHeaderLabels(["Property", "Minimum Value", "Maximum Value", ""])
-        self.filterTable.resizeColumnsToContents()
 
     def load_ui(self, path):
         uic.loadUi(path, self)
@@ -80,6 +77,7 @@ class TrackingWidget(NLayerWidget):
     def __init__(self, napari_viewer: napari.viewer.Viewer = None, parent: QWidget = None):
         super().__init__(napari_viewer, parent)
         # tracking controls
+        self.filter_propery = 'length'
         self.ui = _tracking_ui(self)
         self.layout().addWidget(self.ui)
 
@@ -90,20 +88,7 @@ class TrackingWidget(NLayerWidget):
 
         self.ui.btnTrack.clicked.connect(_start_tracking)
         self.ui.grFilter.setVisible(False)
-
-    def add_filter(self):
-        filter_range = self.ui.slFilter.value()
-        filter_property = self.ui.cbProperties.currentText()
-        _item = QListWidgetItem()
-        _fitler_item = FilterItem(self)
-        _fitler_item.setMin(filter_range[0])
-        _fitler_item.setMax(filter_range[1])
-        _fitler_item.setProperty(filter_property)
-        _fitler_item.removeClicked.connect(lambda: print("remove clicked"))
-
-        _item.setSizeHint(_fitler_item.sizeHint())
-        self.ui.filterList.addItem(_item)
-        self.ui.filterList.setItemWidget(_item, _fitler_item)
+        self.ui.slFilter.setTitle('length')
 
     def apply_filter(self, vrange, property, meta, tracks):
         vmin, vmax = vrange
@@ -149,12 +134,10 @@ class TrackingWidget(NLayerWidget):
         self.all_tracks = tracks
         self.all_tracks_properties = properties
         self.all_tracks_meta = track_meta
-        self.d_all_tracks = copy.deepcopy(tracks)
-        self.d_all_tracks_properties = copy.deepcopy(properties)
-        self.d_all_tracks_meta = copy.deepcopy(track_meta)
 
         _add_to_viewer(self.viewer, Labels.tracks_layer, tracks, properties=properties,
-                       metadata={Labels.tracks_meta: track_meta,
+                       metadata={'all_meta': track_meta,
+                                 'all_tracks': self.all_tracks_df,
                                  Labels.tracking_params: {
                                      "search_range": search_range,
                                      "memory": memory
@@ -173,23 +156,10 @@ class TrackingWidget(NLayerWidget):
                                  })
 
     def init_filter(self):
-        properties = list(filter(lambda x: x.strip() !=
-                          'track_id', Labels.track_meta_header))
-        self.ui.cbProperties.addItems(properties)
-        self.ui.cbProperties.setCurrentText('length')
         self.set_filter_range()
 
-        def _cbProperties_Text_Change():
-            self.set_filter_range()
-            self.reset_view()
-
-        self.ui.cbProperties.currentTextChanged.connect(
-            _cbProperties_Text_Change)
-
-        self.ui.btnAddFilter.clicked.connect(self.add_filter)
-
     def set_filter_range(self):
-        property = self.ui.cbProperties.currentText()
+        property = self.filter_propery
         _lengthRange = self.all_tracks_meta[property].to_numpy()
         self.ui.slFilter.setRange((_lengthRange.min(), _lengthRange.max()))
         self.ui.slFilter.setValue((_lengthRange.min(), _lengthRange.max()))
@@ -198,7 +168,7 @@ class TrackingWidget(NLayerWidget):
         def _update_track_view():
             # slot
             filtered_tracks = self.apply_filter(self.ui.slFilter.value(),
-                                                self.ui.cbProperties.currentText(),
+                                                self.filter_propery,
                                                 self.all_tracks_meta, self.all_tracks_df)
             _tracks, _propeties, meta = pd_to_napari_tracks(filtered_tracks)
             # update track view
@@ -206,8 +176,8 @@ class TrackingWidget(NLayerWidget):
                            _tracks, _propeties)
 
             # update histogram
-            self.ui.flHistogram.draw(meta[self.ui.cbProperties.currentText()].to_numpy(),
-                                     self.ui.cbProperties.currentText())
+            self.ui.flHistogram.draw(meta[self.filter_propery].to_numpy(),
+                                     self.filter_propery)
 
         self.ui.slFilter.valueChanged.connect(_update_track_view)
 

@@ -86,6 +86,7 @@ class HRangeSlider(QWidget):
         self.ui = _h_slider_ui(self)
         layout.addWidget(self.ui)
         self.setLayout(layout)
+        self.setTracking(False)
         self.ui.valueChanged.connect(self.valueChanged)
 
     def setRange(self, vrange):
@@ -96,12 +97,15 @@ class HRangeSlider(QWidget):
 
     def value(self):
         return self.ui.value()
-    
+
     def range(self):
         return self.ui.range()
 
     def setTracking(self, state: bool):
         self.ui.setTracking(state)
+
+    def setTitle(self, title):
+        self.ui.group.setTitle(f"Filter - {title}")
 
 
 if __name__ == "__main__":

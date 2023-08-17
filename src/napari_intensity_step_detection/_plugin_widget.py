@@ -5,6 +5,7 @@ from qtpy.QtCore import Qt
 from .segmentation.segmentation_widget import SegmentationWidget
 from .tracking.tracking_widget import TrackingWidget
 from .step_analysis.stepanalysis_widget import StepAnalysisWidget
+from .filter.property_filter_widget import PropertyFilter
 
 
 class PluginWidget(QWidget):
@@ -14,8 +15,8 @@ class PluginWidget(QWidget):
         self.viewer = napari_viewer
         self.segmentation_widget = SegmentationWidget(napari_viewer)
         self.tracking_widget = TrackingWidget(napari_viewer)
+        self.property_filter_widget = PropertyFilter(napari_viewer)
         self.stepanalysis_widget = StepAnalysisWidget()
-
         self.setLayout(QVBoxLayout())
         self.tabs = QTabWidget()
         self.layout().addWidget(self.tabs)
@@ -43,4 +44,5 @@ class PluginWidget(QWidget):
 
         self.tabs.addTab(self.segmentation_widget, "Segmentation")
         self.tabs.addTab(self.tracking_widget, "Tracking")
+        self.tabs.addTab(self.property_filter_widget, "Properties Filter")
         self.tabs.addTab(self.stepanalysis_widget, "Step Analysis")

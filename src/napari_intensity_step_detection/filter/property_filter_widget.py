@@ -1,0 +1,163 @@
+from pathlib import Path
+from qtpy import uic
+import pandas as pd
+from napari_intensity_step_detection.base.base_widget import NLayerWidget
+from napari_intensity_step_detection.base.sliders import HRangeSlider
+from qtpy.QtWidgets import QWidget, QVBoxLayout
+from qtpy.QtCore import Signal, QAbstractTableModel, Qt, QModelIndex, QVariant, QObject, QSortFilterProxyModel
+import napari
+
+
+class TrackMetaModel(QAbstractTableModel):
+    def __init__(self, dataframe: pd.DataFrame = pd.DataFrame(),
+                 track_id_column_name: str = 'track_id', parent: QObject = None) -> None:
+        super().__init__(parent)
+        self.beginResetModel()
+        self.dataframe = dataframe
+        self.endResetModel()
+        self.track_id_column_name = track_id_column_name
+
+    def setDataframe(self, dataframe: pd.DataFrame):
+        self.beginResetModel()
+        self.dataframe = dataframe
+        self.endResetModel()
+
+    def rowCount(self, parent=QModelIndex()) -> int:
+        return self.dataframe.shape[0]
+
+    def columnCount(self, parent=QModelIndex()) -> int:
+        return self.dataframe.shape[1]
+
+    def data(self, index, role=Qt.ItemDataRole.DisplayRole) -> QVariant:
+        if (not index.isValid()):
+            return QVariant()
+
+        if role == Qt.ItemDataRole.DisplayRole:
+            return str(self.dataframe.iat[index.row(), index.column()])
+
+        if role == Qt.ItemDataRole.UserRole+1:
+            # print("DataFrameModel User Role: ", self.dataframe.iat[index.row(), 0])
+            return int(self.dataframe.iat[index.row(), 0])
+
+    def headerData(self, section, orientation, role=Qt.DisplayRole) -> QVariant:
+        if role == Qt.DisplayRole:
+            if orientation == Qt.Orientation.Horizontal:
+                return self.dataframe.columns[section]
+            return str(section)
+
+
+class TrackMetaModelProxy(QSortFilterProxyModel):
+    def __init__(self, parent: QObject = None):
+        super().__init__(parent)
+        self.properties = {}
+        self.sourceModelChanged.connect(self.update_prperties)
+
+    def filterAcceptsRow(self, source_row: int, source_parent: QModelIndex):
+        if (not hasattr(self, 'properties')) or (not self.properties):
+            return True
+        conditions = []
+        for i, (k, v) in enumerate(self.properties.items()):
+            if k is self.track_model.track_id_column_name:
+                continue
+            # print(i, k, v)
+            index = self.sourceModel().index(source_row, i+1, source_parent)
+            conditions.append((float(self.sourceModel().data(index)) >= v['min'])
+                              and (float(self.sourceModel().data(index)) <= v['max']))
+
+        # AND LOGIC
+        if all(conditions):
+            return True
+        return False
+
+    def headerData(self, section: int, orientation: Qt.Orientation, role: int):
+        return self.sourceModel().headerData(section, orientation, role)
+
+    def setTrackModel(self, model: TrackMetaModel):
+        self.track_model = model
+        self.setSourceModel(model)
+
+    def update_prperties(self):
+        for property in self.track_model.dataframe.columns:
+            if property is self.track_model.track_id_column_name:
+                continue
+            _min = self.track_model.dataframe[property].to_numpy().min()
+            _max = self.track_model.dataframe[property].to_numpy().max()
+            self.properties[property] = {'min': float(_min), 'max': float(_max)}
+
+    def property_filter_updated(self, property_name, vrange):
+        print(f"property_filter_updated {property_name}, {vrange}")
+        self.properties[property_name] = {'min': vrange[0], 'max': vrange[1]}
+        self.invalidateFilter()
+
+
+class _property_filter_ui(QWidget):
+    def __init__(self, parent: QWidget = None):
+        super().__init__(parent)
+        UI_FILE = Path(__file__).resolve().parent.parent.joinpath(
+            'ui', 'filter_view.ui')
+        self.load_ui(UI_FILE)
+
+    def load_ui(self, path):
+        uic.loadUi(path, self)
+
+
+class PropertyFilter(NLayerWidget):
+    propertyUpdated = Signal(str, tuple)
+
+    def __init__(self, napari_view, parent: QWidget = None):
+        super().__init__(napari_view, parent)
+        self.ui = _property_filter_ui(self)
+        self.layout().addWidget(self.ui)
+        self.track_id_column_name = 'track_id'
+        self.layer_filter = {"Tracks": napari.layers.Tracks}
+        self.setup_ui()
+
+        def _call_setup_ui(event):
+            if isinstance(event.value, napari.layers.Tracks):
+                self.setup_ui()
+
+        self.layers_hooks.append(_call_setup_ui)
+
+    def setup_ui(self):
+        if self.get_current_track() is None:
+            return
+
+        track_layer = self.get_current_track()
+        track_meta = track_layer.metadata['all_meta']
+        track_all_tracks = track_layer.metadata['all_tracks']
+        self.model = TrackMetaModel(track_meta, self.track_id_column_name)
+        self.proxy_model = TrackMetaModelProxy()
+        self.proxy_model.setTrackModel(self.model)
+
+        self.all_tracks = track_all_tracks
+        self.ui.allView.setModel(self.model)
+        self.ui.filterView.setModel(self.proxy_model)
+        self.add_controls(track_meta)
+        self.propertyUpdated.connect(self.proxy_model.property_filter_updated)
+
+    def add_controls(self, track_meta: pd.DataFrame):
+        self.ui.filterControls.setLayout(QVBoxLayout())
+        for p in track_meta.columns:
+            if p is self.track_id_column_name:
+                continue
+            _slider = HRangeSlider()
+            _slider.setTitle(p)
+            p_np = track_meta[p].to_numpy()
+            vrange = (p_np.min(), p_np.max())
+            _slider.setRange(vrange)
+            _slider.setValue(vrange)
+
+            # TODO: propertyUpdated sending the correct name looks like the clouser is not working as expected
+            def _slider_updated(vrange):
+                name = p
+                self.propertyUpdated.emit(name, vrange)
+                print(f"_slider_updated {name}, {vrange}")
+
+            _slider.valueChanged.connect(_slider_updated)
+            self.ui.filterControls.layout().addWidget(_slider)
+
+    def get_current_track(self):
+        return self.get_layer("Tracks")
+
+    def get_current_image_data(self):
+        return None if self.get_current_track() is None else self.get_current_track().data
