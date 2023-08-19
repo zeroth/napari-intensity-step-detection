@@ -14,11 +14,17 @@ class NLayerWidget(QWidget):
         self.layer_filter = {"Image": napari.layers.Image,
                              "Label": napari.layers.Labels}
         self.cmb_form_layout = QFormLayout()
-        self.main_layout = QVBoxLayout()
+
+        self.top_widget = QWidget()
+        self.top_widget.setLayout(QVBoxLayout())
+        self.top_widget.setMaximumHeight(200)
         self.msg_label = QLabel("Open Image and Label to get started")
-        self.main_layout.addWidget(self.msg_label)
-        self.main_layout.addLayout(self.cmb_form_layout)
-        self.setLayout(self.main_layout)
+        self.top_widget.layout().addWidget(self.msg_label)
+        self.top_widget.layout().addLayout(self.cmb_form_layout)
+
+        self.setLayout(QVBoxLayout())
+        self.layout().addWidget(self.top_widget)
+        
         self.layers_hooks = []
         if self.viewer:
             self.viewer.layers.events.inserted.connect(

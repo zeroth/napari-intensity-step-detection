@@ -105,7 +105,23 @@ class HRangeSlider(QWidget):
         self.ui.setTracking(state)
 
     def setTitle(self, title):
-        self.ui.group.setTitle(f"Filter - {title}")
+        self.ui.group.setTitle(f"{title}")
+
+
+class HFilterSlider(HRangeSlider):
+    valueChangedTitled = Signal(str, tuple)
+
+    def __init__(self, title: str = 'untitled', parent: QWidget = None) -> None:
+        super().__init__(parent)
+        self.title = title
+        self.valueChanged.connect(self.valueUpdated)
+
+    def setTitle(self, title):
+        self.title = title
+        return super().setTitle(f"Filter - {title}")
+
+    def valueUpdated(self, vrange):
+        self.valueChangedTitled.emit(self.title, vrange)
 
 
 if __name__ == "__main__":

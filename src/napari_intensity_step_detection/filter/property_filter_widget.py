@@ -2,10 +2,11 @@ from pathlib import Path
 from qtpy import uic
 import pandas as pd
 from napari_intensity_step_detection.base.base_widget import NLayerWidget
-from napari_intensity_step_detection.base.sliders import HRangeSlider
+from napari_intensity_step_detection.base.sliders import HFilterSlider
 from qtpy.QtWidgets import QWidget, QVBoxLayout
 from qtpy.QtCore import Signal, QAbstractTableModel, Qt, QModelIndex, QVariant, QObject, QSortFilterProxyModel
 import napari
+import copy
 
 
 class TrackMetaModel(QAbstractTableModel):
@@ -137,23 +138,19 @@ class PropertyFilter(NLayerWidget):
 
     def add_controls(self, track_meta: pd.DataFrame):
         self.ui.filterControls.setLayout(QVBoxLayout())
+        self.ui.filterControls.layout().setContentsMargins(0, 0, 0, 0)
+        self.ui.filterControls.layout().setSpacing(2)
         for p in track_meta.columns:
             if p is self.track_id_column_name:
                 continue
-            _slider = HRangeSlider()
+            _slider = HFilterSlider()
             _slider.setTitle(p)
-            p_np = track_meta[p].to_numpy()
-            vrange = (p_np.min(), p_np.max())
-            _slider.setRange(vrange)
-            _slider.setValue(vrange)
+            _p_np = track_meta[p].to_numpy()
+            _vrange = (_p_np.min(), _p_np.max())
+            _slider.setRange(_vrange)
+            _slider.setValue(_vrange)
+            _slider.valueChangedTitled.connect(self.propertyUpdated)
 
-            # TODO: propertyUpdated sending the correct name looks like the clouser is not working as expected
-            def _slider_updated(vrange):
-                name = p
-                self.propertyUpdated.emit(name, vrange)
-                print(f"_slider_updated {name}, {vrange}")
-
-            _slider.valueChanged.connect(_slider_updated)
             self.ui.filterControls.layout().addWidget(_slider)
 
     def get_current_track(self):

@@ -80,14 +80,16 @@ class TrackingWidget(NLayerWidget):
         self.filter_propery = 'length'
         self.ui = _tracking_ui(self)
         self.layout().addWidget(self.ui)
+        # self.layout().setContentsMargins(0, 0, 0, 0)
+        # self.layout().setSpacing(2)
 
         def _start_tracking():
             self.track()
-            self.ui.grFilter.setVisible(True)
+            self.ui.grFilter.setEnabled(True)
             self.init_filter()
 
         self.ui.btnTrack.clicked.connect(_start_tracking)
-        self.ui.grFilter.setVisible(False)
+        self.ui.grFilter.setEnabled(False)
         self.ui.slFilter.setTitle('length')
 
     def apply_filter(self, vrange, property, meta, tracks):
