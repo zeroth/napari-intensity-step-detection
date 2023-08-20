@@ -117,13 +117,13 @@
   <customwidget>
    <class>FileEditWidget</class>
    <extends>QWidget</extends>
-   <header>napari_intensity_step_detection.segmentation.segmentation_widget.h</header>
+   <header>napari_intensity_step_detection.segmentation_widget.segmentation_widget.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
    <class>FeatureSelector</class>
    <extends>QWidget</extends>
-   <header>napari_intensity_step_detection.segmentation.segmentation_widget.h</header>
+   <header>napari_intensity_step_detection.segmentation_widget.segmentation_widget.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

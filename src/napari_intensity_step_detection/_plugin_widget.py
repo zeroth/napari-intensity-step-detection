@@ -1,11 +1,8 @@
-from qtpy.QtWidgets import QVBoxLayout, QWidget, QLabel, QTabWidget
-from qtpy.QtCore import Qt
-
-
-from .segmentation.segmentation_widget import SegmentationWidget
-from .tracking.tracking_widget import TrackingWidget
-from .step_analysis.stepanalysis_widget import StepAnalysisWidget
-from .filter.property_filter_widget import PropertyFilter
+from qtpy.QtWidgets import QVBoxLayout, QWidget, QTabWidget
+from .segmentation_widget.segmentation_widget import SegmentationWidget
+from .tracking_widget.tracking_widget import TrackingWidget
+from .step_analysis_widget.stepanalysis_widget import StepAnalysisWidget
+from .filter_widget.property_filter_widget import PropertyFilter
 
 
 class PluginWidget(QWidget):
@@ -27,7 +24,7 @@ class PluginWidget(QWidget):
         # title.setTextFormat(Qt.TextFormat.RichText)
         # segmentation_widget.layout().addWidget(title)
         # segmentation_widget.layout().addWidget(self.segmentation_widget)
-        
+
         # tracking_widget = QWidget()
         # tracking_widget.setLayout(QVBoxLayout())
         # title = QLabel("<h2><u>Tracking</u></h2>")

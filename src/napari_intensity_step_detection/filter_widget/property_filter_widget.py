@@ -1,12 +1,11 @@
 from pathlib import Path
 from qtpy import uic
 import pandas as pd
-from napari_intensity_step_detection.base.base_widget import NLayerWidget
-from napari_intensity_step_detection.base.sliders import HFilterSlider
+from napari_intensity_step_detection.base_widgets.base_widget import NLayerWidget
+from napari_intensity_step_detection.base_widgets.sliders import HFilterSlider
 from qtpy.QtWidgets import QWidget, QVBoxLayout
 from qtpy.QtCore import Signal, QAbstractTableModel, Qt, QModelIndex, QVariant, QObject, QSortFilterProxyModel
 import napari
-import copy
 
 
 class TrackMetaModel(QAbstractTableModel):

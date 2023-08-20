@@ -1,14 +1,14 @@
 from pathlib import Path
 import napari
 from napari.utils import progress
-from qtpy.QtWidgets import QWidget, QListWidgetItem
-from qtpy.QtCore import Signal
-from napari_intensity_step_detection.base.base_widget import NLayerWidget
+from qtpy.QtWidgets import QWidget
+from napari_intensity_step_detection.base_widgets.base_widget import NLayerWidget
 import pandas as pd
 import warnings
 from qtpy import uic
 import numpy as np
 import copy
+from napari_intensity_step_detection import utils
 
 
 class Labels:
@@ -21,41 +21,6 @@ class Labels:
                          'intensity_max', 'intensity_mean', 'intensity_min']
     track_table_header = ['label', 'y', 'x', 'intensity_mean',
                           'intensity_max', 'intensity_min', 'area', 'frame', 'track_id']
-
-
-class FilterItem(QWidget):
-    removeClicked = Signal()
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        UI_FILE = Path(__file__).resolve().parent.parent.joinpath(
-            'ui', 'filter_list_item_widget.ui')
-        self.load_ui(UI_FILE)
-        self.setMin(0)
-        self.setMax(0)
-        self.setProperty("Untitled")
-        self.btnRemove.clicked.connect(self.removeClicked)
-
-    def setMin(self, val):
-        self.lbMin.setText(str(val))
-
-    def min(self):
-        return int(self.lbMin.text())
-
-    def setMax(self, val):
-        self.lbMax.setText(str(val))
-
-    def max(self):
-        return int(self.lbMax.text())
-
-    def setProperty(self, val):
-        self.lbProperty.setText(str(val))
-
-    def property(self):
-        return int(self.lbProperty.text())
-
-    def load_ui(self, path):
-        uic.loadUi(path, self)
 
 
 class _tracking_ui(QWidget):
@@ -85,11 +50,13 @@ class TrackingWidget(NLayerWidget):
 
         def _start_tracking():
             self.track()
-            self.ui.grFilter.setEnabled(True)
+            # self.ui.grFilter.setEnabled(True)
+            self.ui.grFilter.setVisible(True)
             self.init_filter()
 
         self.ui.btnTrack.clicked.connect(_start_tracking)
-        self.ui.grFilter.setEnabled(False)
+        # self.ui.grFilter.setEnabled(False)
+        self.ui.grFilter.setVisible(False)
         self.ui.slFilter.setTitle('length')
 
     def apply_filter(self, vrange, property, meta, tracks):
@@ -131,7 +98,9 @@ class TrackingWidget(NLayerWidget):
         self.create_all_tracks(search_range, memory)
 
     def create_all_tracks(self, search_range, memory):
-        tracks, properties, track_meta = pd_to_napari_tracks(df=self.all_tracks_df)
+        tracks, properties, track_meta = utils.pd_to_napari_tracks(self.all_tracks_df,
+                                                                   Labels.track_header,
+                                                                   Labels.track_meta_header)
         # initial tracking results
         self.all_tracks = tracks
         self.all_tracks_properties = properties
@@ -172,7 +141,9 @@ class TrackingWidget(NLayerWidget):
             filtered_tracks = self.apply_filter(self.ui.slFilter.value(),
                                                 self.filter_propery,
                                                 self.all_tracks_meta, self.all_tracks_df)
-            _tracks, _propeties, meta = pd_to_napari_tracks(filtered_tracks)
+            _tracks, _propeties, meta = utils.pd_to_napari_tracks(filtered_tracks,
+                                                                  Labels.track_header,
+                                                                  Labels.track_meta_header)
             # update track view
             _add_to_viewer(self.viewer, Labels.tracks_layer,
                            _tracks, _propeties)
@@ -199,74 +170,6 @@ def _add_to_viewer(viewer, name, data, properties=None, scale=None, metadata=Non
     except KeyError:
         viewer.add_tracks(data, name=name, properties=properties,
                           scale=scale, metadata=metadata)
-
-
-def napari_track_to_pd(track_layer: napari.layers.Tracks):
-    """
-    This function converts the napari Tracks layer to pandas DataFrame
-
-    params:
-        track_layer: napari.layers.Tracks
-
-    returns:
-        df: pd.DataFrame
-
-    also see:
-        pd_to_napari_tracks
-    """
-    df = pd.DataFrame(track_layer.data, columns=Labels.track_header)
-    if not hasattr(track_layer, 'properties'):
-        warnings.warn(
-            "Track layer does not have properties produsing tracking without properties")
-        return df
-
-    properties = track_layer.properties
-    for property, values in properties.items():
-        if property == Labels.track_id:
-            continue
-        df[property] = values
-    return df
-
-
-def pd_to_napari_tracks(df: pd.DataFrame):
-    """
-    This function converts pandas DataFrame to napari Tracks layer paramters
-    params:
-        df: pandas.DataFrame
-
-    return:
-        tracks: np.Array 2D [
-            [track_id, time, (c), (z), y, x]
-        ]
-        properties: dict
-        track_meta: pd.DataFrame
-    also see:
-        napari_track_to_pd
-    """
-    # assuming df is the dataframe with 'particle' as track_id
-    tracks = []
-    properties = {}
-
-    columns = list(df.columns)
-
-    for th in Labels.track_header:
-        columns.remove(th)
-
-    tg = df.groupby('track_id', as_index=False,
-                    group_keys=True, dropna=True)
-    track_meta = pd.concat([tg['frame'].count(),
-                            tg['intensity_mean'].max()['intensity_mean'],
-                            tg['intensity_mean'].mean()['intensity_mean'],
-                            tg['intensity_mean'].min()['intensity_mean']], axis=1)
-    track_meta.columns = Labels.track_meta_header
-
-    properties = df[columns].to_dict()
-    properties = dict(
-        map(lambda kv: (kv[0], np.array(list(kv[1].values()))), properties.items()))
-
-    tracks = df[Labels.track_header].to_numpy()
-
-    return tracks, properties, track_meta
 
 
 def _napari_main():

@@ -88,6 +88,6 @@ venv/
 launch.py
 *.tif
 *.tiff
-*.pyproject
+# *.pyproject
 *.user
 *.ipynb

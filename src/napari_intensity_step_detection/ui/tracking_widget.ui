@@ -13,34 +13,19 @@
   <property name="windowTitle">
    <string>Widget</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout_4">
-   <property name="spacing">
-    <number>4</number>
-   </property>
-   <property name="leftMargin">
-    <number>6</number>
-   </property>
-   <property name="topMargin">
-    <number>6</number>
-   </property>
-   <property name="rightMargin">
-    <number>6</number>
-   </property>
-   <property name="bottomMargin">
-    <number>6</number>
-   </property>
+  <layout class="QVBoxLayout" name="verticalLayout_2">
    <item>
     <widget class="QSplitter" name="splitter">
-     <property name="maximumSize">
-      <size>
-       <width>16777215</width>
-       <height>16777215</height>
-      </size>
-     </property>
      <property name="orientation">
       <enum>Qt::Vertical</enum>
      </property>
      <widget class="QGroupBox" name="grTrack">
+      <property name="minimumSize">
+       <size>
+        <width>0</width>
+        <height>100</height>
+       </size>
+      </property>
       <property name="maximumSize">
        <size>
         <width>16777215</width>
@@ -125,19 +110,32 @@
      </widget>
     </widget>
    </item>
+   <item>
+    <spacer name="verticalSpacer">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>203</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
   </layout>
  </widget>
  <customwidgets>
   <customwidget>
    <class>HRangeSlider</class>
    <extends>QWidget</extends>
-   <header>napari_intensity_step_detection.base.sliders.h</header>
+   <header>napari_intensity_step_detection.base_widgets.sliders.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
    <class>HistogramWidget</class>
    <extends>QWidget</extends>
-   <header>napari_intensity_step_detection.base.plots.h</header>
+   <header>napari_intensity_step_detection.base_widgets.plots.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

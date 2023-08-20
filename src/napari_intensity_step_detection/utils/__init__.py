@@ -3,6 +3,8 @@ import pandas as pd
 import trackpy
 from skimage import measure
 from tqdm import tqdm
+import napari
+import warnings
 
 
 def get_frame_position_properties(frame: int, mask: np.ndarray, image: np.ndarray = None, result: pd.DataFrame = None,
@@ -43,3 +45,71 @@ def get_statck_properties(masks: np.ndarray, images: np.ndarray, result: pd.Data
 def get_tracks(df: pd.DataFrame, search_range: float = 2, memory: int = 0, show_progress: bool = False) -> pd.DataFrame:
     trackpy.quiet((not show_progress))
     return trackpy.link(f=df, search_range=search_range, memory=memory)
+
+
+def napari_track_to_pd(track_layer: napari.layers.Tracks, track_header: list, track_id):
+    """
+    This function converts the napari Tracks layer to pandas DataFrame
+
+    params:
+        track_layer: napari.layers.Tracks
+
+    returns:
+        df: pd.DataFrame
+
+    also see:
+        pd_to_napari_tracks
+    """
+    df = pd.DataFrame(track_layer.data, columns=track_header)
+    if not hasattr(track_layer, 'properties'):
+        warnings.warn(
+            "Track layer does not have properties produsing tracking without properties")
+        return df
+
+    properties = track_layer.properties
+    for property, values in properties.items():
+        if property == track_id:
+            continue
+        df[property] = values
+    return df
+
+
+def pd_to_napari_tracks(df: pd.DataFrame, track_header, track_meta_header):
+    """
+    This function converts pandas DataFrame to napari Tracks layer paramters
+    params:
+        df: pandas.DataFrame
+
+    return:
+        tracks: np.Array 2D [
+            [track_id, time, (c), (z), y, x]
+        ]
+        properties: dict
+        track_meta: pd.DataFrame
+    also see:
+        napari_track_to_pd
+    """
+    # assuming df is the dataframe with 'particle' as track_id
+    tracks = []
+    properties = {}
+
+    columns = list(df.columns)
+
+    for th in track_header:
+        columns.remove(th)
+
+    tg = df.groupby('track_id', as_index=False,
+                    group_keys=True, dropna=True)
+    track_meta = pd.concat([tg['frame'].count(),
+                            tg['intensity_mean'].max()['intensity_mean'],
+                            tg['intensity_mean'].mean()['intensity_mean'],
+                            tg['intensity_mean'].min()['intensity_mean']], axis=1)
+    track_meta.columns = track_meta_header
+
+    properties = df[columns].to_dict()
+    properties = dict(
+        map(lambda kv: (kv[0], np.array(list(kv[1].values()))), properties.items()))
+
+    tracks = df[track_header].to_numpy()
+
+    return tracks, properties, track_meta

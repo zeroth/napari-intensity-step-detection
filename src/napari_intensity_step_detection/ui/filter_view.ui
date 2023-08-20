@@ -80,7 +80,7 @@
             <x>0</x>
             <y>0</y>
             <width>368</width>
-            <height>93</height>
+            <height>86</height>
            </rect>
           </property>
          </widget>
@@ -127,7 +127,7 @@
   <customwidget>
    <class>HistogramWidget</class>
    <extends>QWidget</extends>
-   <header>napari_intensity_step_detection.base.plots.h</header>
+   <header>napari_intensity_step_detection.base_widgets.plots.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
