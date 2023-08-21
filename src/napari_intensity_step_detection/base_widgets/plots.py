@@ -117,7 +117,9 @@ class HistogramPlotsWidget(BaseMPLWidget):
         for i, (p, v) in enumerate(data.items()):
             color = colors[int(i % n_colors)]
             value = np.array(v).ravel()
-            self.axes.hist(value, bins=256, histtype='step', color=color, label=p, alpha=0.5)
+            # hist, _bin_e = np.histogram(value, bins=int(len(value)*0.1))
+            # self.axes.plot(hist, color=color, label=p, alpha=0.5)
+            self.axes.hist(value, color=color, label=p, alpha=0.5)
             self.axes.legend(loc='upper right')
 
         # needed
