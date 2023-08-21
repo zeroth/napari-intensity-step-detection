@@ -37,7 +37,7 @@ class TrackMetaModel(QAbstractTableModel):
 
         if role == Qt.ItemDataRole.UserRole+1:
             # print("DataFrameModel User Role: ", self.dataframe.iat[index.row(), 0])
-            return int(self.dataframe.iat[index.row(), 0])
+            return float(self.dataframe.iat[index.row(), index.column()])
 
     def headerData(self, section, orientation, role=Qt.DisplayRole) -> QVariant:
         if role == Qt.DisplayRole:
@@ -48,7 +48,7 @@ class TrackMetaModel(QAbstractTableModel):
 
 class TrackMetaModelProxy(QSortFilterProxyModel):
     def __init__(self, parent: QObject = None):
-        super().__init__(parent)
+        super(TrackMetaModelProxy, self).__init__(parent)
         self.properties = {}
         self.sourceModelChanged.connect(self.update_prperties)
 
@@ -57,7 +57,7 @@ class TrackMetaModelProxy(QSortFilterProxyModel):
             return True
         conditions = []
         for i, (k, v) in enumerate(self.properties.items()):
-            if k is self.track_model.track_id_column_name:
+            if str(k).strip() == self.track_model.track_id_column_name.strip():
                 continue
             # print(i, k, v)
             index = self.sourceModel().index(source_row, i+1, source_parent)
@@ -78,7 +78,8 @@ class TrackMetaModelProxy(QSortFilterProxyModel):
 
     def update_prperties(self):
         for property in self.track_model.dataframe.columns:
-            if property is self.track_model.track_id_column_name:
+            property = str(property).strip()
+            if property == self.track_model.track_id_column_name.strip():
                 continue
             _min = self.track_model.dataframe[property].to_numpy().min()
             _max = self.track_model.dataframe[property].to_numpy().max()
@@ -126,21 +127,33 @@ class PropertyFilter(NLayerWidget):
         track_meta = track_layer.metadata['all_meta']
         track_all_tracks = track_layer.metadata['all_tracks']
         self.model = TrackMetaModel(track_meta, self.track_id_column_name)
-        self.proxy_model = TrackMetaModelProxy()
-        self.proxy_model.setTrackModel(self.model)
-
         self.all_tracks = track_all_tracks
         self.ui.allView.setModel(self.model)
+
+        self.proxy_model = TrackMetaModelProxy()
+        self.proxy_model.setTrackModel(self.model)
         self.ui.filterView.setModel(self.proxy_model)
+        self.ui.filterPlots.setModel(self.model)
         self.add_controls(track_meta)
         self.propertyUpdated.connect(self.proxy_model.property_filter_updated)
+
+        # # setup histogram
+        # _properties = list(track_meta.columns)
+        # _properties.remove(self.track_id_column_name)
+        # self.ui.filterProperties.setItems(_properties)
+
+        # def _filter_combo_chnaged():
+        #     current_text = self.ui.filterProperties.currentText()
+        #     print(current_text)
+
+        # self.ui.filterProperties.currentTextChanged.connect(_filter_combo_chnaged)
 
     def add_controls(self, track_meta: pd.DataFrame):
         self.ui.filterControls.setLayout(QVBoxLayout())
         self.ui.filterControls.layout().setContentsMargins(0, 0, 0, 0)
         self.ui.filterControls.layout().setSpacing(2)
         for p in track_meta.columns:
-            if p is self.track_id_column_name:
+            if p == self.track_id_column_name:
                 continue
             _slider = HFilterSlider()
             _slider.setTitle(p)

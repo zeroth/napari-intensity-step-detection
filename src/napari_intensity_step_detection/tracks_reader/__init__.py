@@ -25,15 +25,17 @@ def track_stats_reader(path: str):
         output = json.loads(output)
 
     print(output.keys())
-    all_tracks = output["all_tracks"]
-    all_meta = output["all_meta"]
+    all_tracks = pd.read_json(output["all_tracks"])
+    all_meta = pd.read_json(output["all_meta"])
     tracking_params = output["tracking_params"]
     metadata = {
-        "all_tracks": pd.read_json(all_tracks),
-        "all_meta": pd.read_json(all_meta),
+        "all_tracks": all_tracks,
+        "all_meta": all_meta,
         "tracking_params": tracking_params
     }
     attributes = output["napari_tracks_properties"]
+    if 'features' in attributes:
+        attributes.pop('features')
     print(attributes.keys())
     attributes["metadata"] = metadata
     track_header = ['track_id', 'frame', 'y', 'x']
@@ -44,5 +46,10 @@ def track_stats_reader(path: str):
                                                                track_header,
                                                                track_meta_header)
     attributes["properties"] = properties
-
-    return (tracks, attributes, 'tracks')
+    # print(type(attributes))
+    layer_data = (tracks, attributes, 'tracks')
+    if isinstance(layer_data[1], dict):
+        print("attribute is dict")
+    else:
+        print("attribute is not a  dict")
+    return [layer_data]

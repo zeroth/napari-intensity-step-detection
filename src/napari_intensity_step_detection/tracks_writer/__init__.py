@@ -34,13 +34,14 @@ def track_stats_writer(path: str, data: Any, attributes: dict) -> List[str]:
     LayerAttributes = dict
     SingleWriterFunction = Callable[[str, DataType, LayerAttributes], List[str]]
     """
-
+    print(attributes.keys())
     output = {
         "all_tracks": attributes['metadata']['all_tracks'],
         "all_meta": attributes['metadata']['all_meta'],
         "tracking_params": attributes['metadata']["tracking_params"]
     }
     attributes.pop('metadata')
+    attributes.pop('features')
     output['napari_tracks_properties'] = attributes
     with gzip.open(path, 'wb') as f:
         f.write(json.dumps(output, cls=NTracksEncoder).encode('utf-8'))
