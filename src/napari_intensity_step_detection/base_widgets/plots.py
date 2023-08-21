@@ -117,7 +117,7 @@ class HistogramPlotsWidget(BaseMPLWidget):
         for i, (p, v) in enumerate(data.items()):
             color = colors[int(i % n_colors)]
             value = np.array(v).ravel()
-            self.axes.hist(value, bins=256, histtype='step', color=color, label=p)
+            self.axes.hist(value, bins=256, histtype='step', color=color, label=p, alpha=0.5)
             self.axes.legend(loc='upper right')
 
         # needed
@@ -127,6 +127,7 @@ class HistogramPlotsWidget(BaseMPLWidget):
 class HistogramPlotsView(QAbstractItemView):
     def __init__(self, parent: Any = None):
         super().__init__(parent=parent)
+        self.is_dirty = True
         self.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
         self.plot = HistogramPlotsWidget(self.viewport())
         self.horizontalScrollBar().setValue(0)
@@ -149,19 +150,25 @@ class HistogramPlotsView(QAbstractItemView):
                 index = self.model().index(row, col, self.rootIndex())
                 val = float(self.model().data(index, Qt.ItemDataRole.DisplayRole))
                 _property = self.model().headerData(col, Qt.Orientation.Horizontal, Qt.ItemDataRole.DisplayRole)
-                data[_property] = val
+                if _property not in data:
+                    data[_property] = [val]
+                else:
+                    data[_property].append(val)
+
         self.plot.draw(data=data)
+        self.is_dirty = False
 
     def dataChanged(self, topLeft: QModelIndex, bottomRight: QModelIndex, roles: List[Any]):
         print("dataChanged")
         if Qt.ItemDataRole.DisplayRole not in roles:
             return
-        self.draw()
+        # self.draw()
+        self.is_dirty = False
         self.viewport().update()
         # super().dataChanged(self, topLeft, bottomRight, roles)
 
     def updateGeometries(self):
-        print("updateGeometries")
+        # print("updateGeometries")
         # self.horizontalScrollBar().setPageStep(self.viewport().width())
         # self.horizontalScrollBar().setRange(0, self.viewport().width())
         # self.verticalScrollBar().setPageStep(self.viewport().height())
@@ -169,41 +176,48 @@ class HistogramPlotsView(QAbstractItemView):
         self.plot.resize(self.viewport().rect().width(), self.viewport().rect().height())
 
     def verticalOffset(self):
-        print("verticalOffset")
+        # print("verticalOffset")
         return self.verticalScrollBar().value()
 
     def horizontalOffset(self):
-        print("horizontalOffset")
+        # print("horizontalOffset")
         return self.horizontalScrollBar().value()
 
     # # Returns the position of the item in viewport coordinates.
 
     def visualRect(self, index: QModelIndex):
-        print("visualRect")
+        # print("visualRect")
         if (not index.isValid()):
             return QRect()
 
         return self.viewport().rect()
 
     def indexAt(self, point: QPoint):
-        print("indexAt")
+        # print("indexAt")
         return QModelIndex()
 
     # def visualRegionForSelection(self, selection):
     #     print("visualRegionForSelection")
     #     return self.viewport().rect()
 
-    # def rowsInserted(self, parent, start, end):
-    #     print("rowsInserted")
-    #     super().rowsInserted(self, parent, start, end)
+    def rowsInserted(self, parent, start, end):
+        # print("rowsInserted")
+        self.is_dirty = True
+        super(HistogramPlotsView, self).rowsInserted(parent, start, end)
+        self.viewport().update()
 
-    # def rowsAboutToBeRemoved(self, parent, start, end):
-    #     print("rowsAboutToBeRemoved")
-    #     super().rowsAboutToBeRemoved(self, parent, start, end)
+    def rowsAboutToBeRemoved(self, parent: QModelIndex, start: int, end: int):
+        # print("rowsAboutToBeRemoved")
+        self.is_dirty = True
+        super(HistogramPlotsView, self).rowsAboutToBeRemoved(parent, start, end)
+        self.viewport().update()
 
     def paintEvent(self, event):
-        print("paintEvent")
+        # print("paintEvent")
         # super().paintEvent(self, event)
+        # TODO: check dirty
+        if not self.is_dirty:
+            return super(HistogramPlotsView, self).paintEvent(event)
         if not self.model():
             return super(HistogramPlotsView, self).paintEvent(event)
         self.draw()

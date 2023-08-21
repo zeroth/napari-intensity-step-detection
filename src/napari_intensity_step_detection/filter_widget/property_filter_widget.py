@@ -133,7 +133,7 @@ class PropertyFilter(NLayerWidget):
         self.proxy_model = TrackMetaModelProxy()
         self.proxy_model.setTrackModel(self.model)
         self.ui.filterView.setModel(self.proxy_model)
-        self.ui.filterPlots.setModel(self.model)
+        self.ui.filterPlots.setModel(self.proxy_model)
         self.add_controls(track_meta)
         self.propertyUpdated.connect(self.proxy_model.property_filter_updated)
 
