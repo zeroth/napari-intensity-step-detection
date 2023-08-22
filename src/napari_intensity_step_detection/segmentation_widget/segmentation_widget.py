@@ -2,6 +2,7 @@ from pathlib import Path
 from qtpy.QtWidgets import QWidget, QVBoxLayout, QLabel, QCheckBox
 from qtpy.QtWidgets import QGridLayout
 from napari_intensity_step_detection.base_widgets.base_widget import NLayerWidget
+from napari_intensity_step_detection.base_widgets import AppState
 import napari
 from magicgui.widgets import FileEdit
 from magicgui.types import FileDialogMode
@@ -134,9 +135,9 @@ class _segmentation_ui(QWidget):
 
 
 class SegmentationWidget(NLayerWidget):
-    def __init__(self, napari_viewer: napari.viewer.Viewer):
-        super().__init__(napari_viewer)
-
+    def __init__(self, app_state: AppState = None, parent=None):
+        super().__init__(app_state=app_state, parent=parent)
+        self.name = "Segmentation"
         self.classifier_class = PixelClassifier
         self.current_annotation = None
         self.ui = _segmentation_ui(self)
@@ -169,10 +170,12 @@ class SegmentationWidget(NLayerWidget):
                 self.ui.featureSelector.getFeatures(),
                 self.ui.numMaxDepthSpinner.value(),
                 self.ui.numTreesSpinner.value(),
-                str(self.ui.filenameEdit.value()).replace(
-                    "\\", "/").replace("//", "/"),
+                str(self.ui.filenameEdit.value()).replace("\\", "/").replace("//", "/"),
                 first_image_layer.scale
             )
+            self.state.parameters[f"{self.name}_classifier_file"] = str(
+                self.ui.filenameEdit.value()).replace("\\", "/").replace("//", "/")
+
         self.ui.btnTrain.clicked.connect(train_clicked)
 
         # Predict button
@@ -269,7 +272,7 @@ class SegmentationWidget(NLayerWidget):
 
         short_filename = filename.split("/")[-1]
 
-        _add_to_viewer(self.viewer, False, "Result of " +
+        _add_to_viewer(self.state.viewer, False, "Result of " +
                        short_filename, result, scale)
 
 

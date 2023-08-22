@@ -1,14 +1,12 @@
 from pathlib import Path
 import napari
 from napari.utils import progress
-from qtpy.QtWidgets import QWidget
+from qtpy.QtWidgets import QWidget, QVBoxLayout
 from napari_intensity_step_detection.base_widgets.base_widget import NLayerWidget
-import pandas as pd
-import warnings
+from napari_intensity_step_detection.filter_widget.property_filter_widget import PropertyFilter
 from qtpy import uic
-import numpy as np
-import copy
 from napari_intensity_step_detection import utils
+from napari_intensity_step_detection.base_widgets import AppState
 
 
 class Labels:
@@ -31,7 +29,6 @@ class _tracking_ui(QWidget):
         self.load_ui(UI_FILE)
         self.sbSearchRange.setValue(2)
         self.sbMemory.setValue(1)
-        self.slFilter.setTracking(False)
 
     def load_ui(self, path):
         uic.loadUi(path, self)
@@ -39,38 +36,26 @@ class _tracking_ui(QWidget):
 
 class TrackingWidget(NLayerWidget):
 
-    def __init__(self, napari_viewer: napari.viewer.Viewer = None, parent: QWidget = None):
-        super().__init__(napari_viewer, parent)
+    def __init__(self, app_state: AppState = None, parent: QWidget = None):
+        super().__init__(app_state, parent)
         # tracking controls
+        self.state = app_state
         self.filter_propery = 'length'
         self.ui = _tracking_ui(self)
         self.layout().addWidget(self.ui)
-        # self.layout().setContentsMargins(0, 0, 0, 0)
-        # self.layout().setSpacing(2)
+        # self.ui.filterView.setLayout(QVBoxLayout())
+        # propertyFilter = PropertyFilter(napari_view=napari_viewer, parent=self, include_properties=['length'])
+        # propertyFilter.gbNapariLayers.setVisible(False)
+        # propertyFilter.ui.tabWidget.setVisible(False)
+        # self.ui.filterView.layout().addWidget(propertyFilter)
+        # self.ui.filterView.layout().setContentsMargins(0, 0, 0, 0)
 
         def _start_tracking():
             self.track()
-            self.ui.grFilter.setEnabled(True)
-            # self.ui.grFilter.setVisible(True)
-            self.init_filter()
 
         self.ui.btnTrack.clicked.connect(_start_tracking)
-        self.ui.grFilter.setEnabled(False)
-        # self.ui.grFilter.setVisible(False)
-        self.ui.slFilter.setTitle('length')
-
-    def apply_filter(self, vrange, property, meta, tracks):
-        vmin, vmax = vrange
-        filter_txt = property
-        filtered_meta = meta[(meta[filter_txt] >= vmin) &
-                             (meta[filter_txt] <= vmax)]
-        filtered_track_ids = filtered_meta['track_id']
-        filtered_tracks = tracks.loc[tracks['track_id'].isin(
-            filtered_track_ids)]
-        return filtered_tracks
 
     def track(self):
-        from particle_tracking import utils
         image = self.get_layer('Image').data
         mask = self.get_layer('Label').data
         search_range = float(self.ui.sbSearchRange.value())
@@ -84,76 +69,29 @@ class TrackingWidget(NLayerWidget):
 
         pbr.update(10)
 
-        tracked = utils.get_tracks(
+        tracked_df = utils.get_tracks(
             main_pd_frame, search_range=search_range, memory=memory)
         # column name change from particle to track_id
-        tracked.rename(columns={'particle': 'track_id'}, inplace=True)
-
-        self.all_tracks_df = tracked
-        self.d_all_tracks_df = copy.deepcopy(tracked)
+        tracked_df.rename(columns={'particle': 'track_id'}, inplace=True)
 
         pbr.update(100)
         pbr.close()
 
-        self.create_all_tracks(search_range, memory)
-
-    def create_all_tracks(self, search_range, memory):
-        tracks, properties, track_meta = utils.pd_to_napari_tracks(self.all_tracks_df,
+        tracks, properties, track_meta = utils.pd_to_napari_tracks(tracked_df,
                                                                    Labels.track_header,
                                                                    Labels.track_meta_header)
-        # initial tracking results
-        self.all_tracks = tracks
-        self.all_tracks_properties = properties
-        self.all_tracks_meta = track_meta
+
+        self.state.setData("tracking_all_tracks", tracked_df)
+        self.state.setData("tracking_all_meta", track_meta)
 
         _add_to_viewer(self.viewer, Labels.tracks_layer, tracks, properties=properties,
                        metadata={'all_meta': track_meta,
-                                 'all_tracks': self.all_tracks_df,
+                                 'all_tracks': tracked_df,
                                  Labels.tracking_params: {
                                      "search_range": search_range,
                                      "memory": memory
                                  }
                                  })
-
-        # self.add_filter_widget(self.viewer.layers[Labels.tracks_layer])
-
-    def reset_view(self):
-        _add_to_viewer(self.viewer, Labels.tracks_layer, self.all_tracks, properties=self.all_tracks_properties,
-                       metadata={Labels.tracks_meta: self.all_tracks_meta,
-                                 Labels.tracking_params: {
-                                     "search_range": self.ui.slFilter.value(),
-                                     "memory": self.ui.sbMemory.value()
-                                 }
-                                 })
-
-    def init_filter(self):
-        self.set_filter_range()
-
-    def set_filter_range(self):
-        property = self.filter_propery
-        _lengthRange = self.all_tracks_meta[property].to_numpy()
-        self.ui.slFilter.setRange((_lengthRange.min(), _lengthRange.max()))
-        self.ui.slFilter.setValue((_lengthRange.min(), _lengthRange.max()))
-        self.ui.flHistogram.draw(_lengthRange, property)
-
-        def _update_track_view():
-            # slot
-            filtered_tracks = self.apply_filter(self.ui.slFilter.value(),
-                                                self.filter_propery,
-                                                self.all_tracks_meta, self.all_tracks_df)
-            _tracks, _propeties, meta = utils.pd_to_napari_tracks(filtered_tracks,
-                                                                  Labels.track_header,
-                                                                  Labels.track_meta_header)
-            # update track view
-            _add_to_viewer(self.viewer, Labels.tracks_layer,
-                           _tracks, _propeties)
-
-            # update histogram
-            self.ui.flHistogram.draw(meta[self.filter_propery].to_numpy(),
-                                     self.filter_propery)
-
-        self.ui.slFilter.valueChanged.connect(_update_track_view)
-
 
 # Comman functions
 

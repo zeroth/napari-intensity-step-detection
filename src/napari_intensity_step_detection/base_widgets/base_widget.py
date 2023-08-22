@@ -1,36 +1,37 @@
-import typing
-from PyQt5 import QtCore
-from PyQt5.QtWidgets import QWidget
+from pathlib import Path
+from PyQt5 import uic
 import napari
-from qtpy.QtCore import Signal
 from qtpy.QtWidgets import QWidget, QFormLayout, QComboBox, QVBoxLayout, QLabel
+from napari_intensity_step_detection.base_widgets import AppState
 
 
 class NLayerWidget(QWidget):
-    def __init__(self, napari_viewer: napari.viewer.Viewer = None, parent: QWidget = None):
+    def __init__(self, app_state: AppState = None, parent: QWidget = None):
         super().__init__(parent)
-        self.viewer = napari_viewer
+        # self.viewer = napari_viewer
+        self.state = app_state
+        UI_FILE = Path(__file__).resolve().parent.parent.joinpath(
+            'ui', 'base_widget.ui')
+        self.load_ui(UI_FILE)
+
+        self.nLayersLayout = QFormLayout()
+        self.layersWidget.setLayout(self.nLayersLayout)
+        self.msg_label = QLabel("Open Image and Label to get started")
+        self.nLayersLayout.addRow(self.msg_label)
+
         self.layers_combo_container = {}
         self.layer_filter = {"Image": napari.layers.Image,
                              "Label": napari.layers.Labels}
-        self.cmb_form_layout = QFormLayout()
 
-        self.top_widget = QWidget()
-        self.top_widget.setLayout(QVBoxLayout())
-        self.top_widget.setMaximumHeight(200)
-        self.msg_label = QLabel("Open Image and Label to get started")
-        self.top_widget.layout().addWidget(self.msg_label)
-        self.top_widget.layout().addLayout(self.cmb_form_layout)
-
-        self.setLayout(QVBoxLayout())
-        self.layout().addWidget(self.top_widget)
-        
         self.layers_hooks = []
-        if self.viewer:
-            self.viewer.layers.events.inserted.connect(
+        if self.state:
+            self.state.nLayerInserted.connect(
                 self.viewer_layer_updated)
-            self.viewer.layers.events.removed.connect(
+            self.state.nLayerRemoved.connect(
                 self.viewer_layer_updated)
+
+    def load_ui(self, path):
+        uic.loadUi(path, self)
 
     def viewer_layer_updated(self, event):
         for name, dtype in self.layer_filter.items():
@@ -42,21 +43,21 @@ class NLayerWidget(QWidget):
     def update_combo(self, name, dtype, is_internal=False):
         combo_box = self.layers_combo_container.get(name, QComboBox())
         combo_box.clear()
-        for i, l in enumerate(self.viewer.layers):
+        for i, l in enumerate(self.state.getLayers()):
             if isinstance(l, dtype):
                 combo_box.addItem(l.name, i)
 
         if combo_box.count() == 0:  # All the layer of dtype has been removed
-            self.cmb_form_layout.removeRow(combo_box)
+            self.nLayersLayout.removeRow(combo_box)
             del combo_box
             del self.layers_combo_container[name]
             return
 
         if not (name in self.layers_combo_container):
-            self.cmb_form_layout.addRow(name, combo_box)
+            self.nLayersLayout.addRow(name, combo_box)
             self.layers_combo_container[name] = combo_box
 
-        if self.cmb_form_layout.rowCount():
+        if self.nLayersLayout.rowCount():
             self.msg_label.setVisible(False)
         else:
             self.msg_label.setVisible(True)
@@ -65,7 +66,7 @@ class NLayerWidget(QWidget):
         combo = self.layers_combo_container.get(name, None)
         if combo is None:
             return None
-        return self.viewer.layers[combo.currentText()]
+        return self.state.getLayer(combo.currentText())
 
     def get_layer_name(self, name):
         combo = self.layers_combo_container.get(name, None)

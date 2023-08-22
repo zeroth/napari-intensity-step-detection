@@ -14,6 +14,18 @@
    <string>Widget</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_2">
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
    <item>
     <widget class="QSplitter" name="splitter">
      <property name="orientation">
@@ -81,7 +93,7 @@
       </property>
       <layout class="QVBoxLayout" name="verticalLayout">
        <item>
-        <widget class="HistogramWidget" name="flHistogram" native="true">
+        <widget class="QWidget" name="filterView" native="true">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
            <horstretch>0</horstretch>
@@ -96,49 +108,12 @@
          </property>
         </widget>
        </item>
-       <item>
-        <widget class="HRangeSlider" name="slFilter" native="true">
-         <property name="maximumSize">
-          <size>
-           <width>16777215</width>
-           <height>100</height>
-          </size>
-         </property>
-        </widget>
-       </item>
       </layout>
      </widget>
     </widget>
    </item>
-   <item>
-    <spacer name="verticalSpacer">
-     <property name="orientation">
-      <enum>Qt::Vertical</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>20</width>
-       <height>203</height>
-      </size>
-     </property>
-    </spacer>
-   </item>
   </layout>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>HRangeSlider</class>
-   <extends>QWidget</extends>
-   <header>napari_intensity_step_detection.base_widgets.sliders.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>HistogramWidget</class>
-   <extends>QWidget</extends>
-   <header>napari_intensity_step_detection.base_widgets.plots.h</header>
-   <container>1</container>
-  </customwidget>
- </customwidgets>
  <resources/>
  <connections/>
 </ui>

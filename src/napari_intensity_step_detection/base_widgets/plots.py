@@ -134,7 +134,7 @@ class HistogramPlotsView(QAbstractItemView):
         self.plot = HistogramPlotsWidget(self.viewport())
         self.horizontalScrollBar().setValue(0)
         self.verticalScrollBar().setValue(0)
-
+        self.include_properties = []
         if (not self.plot.testAttribute(Qt.WidgetAttribute.WA_Resized)):
             self.plot.resize(self.plot.sizeHint())
 
@@ -152,6 +152,8 @@ class HistogramPlotsView(QAbstractItemView):
                 index = self.model().index(row, col, self.rootIndex())
                 val = float(self.model().data(index, Qt.ItemDataRole.DisplayRole))
                 _property = self.model().headerData(col, Qt.Orientation.Horizontal, Qt.ItemDataRole.DisplayRole)
+                if (len(self.include_properties)) and (_property not in self.include_properties):
+                    continue
                 if _property not in data:
                     data[_property] = [val]
                 else:
@@ -198,9 +200,8 @@ class HistogramPlotsView(QAbstractItemView):
         # print("indexAt")
         return QModelIndex()
 
-    # def visualRegionForSelection(self, selection):
-    #     print("visualRegionForSelection")
-    #     return self.viewport().rect()
+    def visualRegionForSelection(self, selection):
+        super(HistogramPlotsView, self).visualRegionForSelection(selection)
 
     def rowsInserted(self, parent, start, end):
         # print("rowsInserted")
@@ -223,3 +224,6 @@ class HistogramPlotsView(QAbstractItemView):
         if not self.model():
             return super(HistogramPlotsView, self).paintEvent(event)
         self.draw()
+
+    def moveCursor(self, cursorAction, modifiers):
+        super(HistogramPlotsView, self).moveCursor(cursorAction, modifiers)
