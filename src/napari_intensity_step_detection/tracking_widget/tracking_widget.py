@@ -2,11 +2,11 @@ from pathlib import Path
 import napari
 from napari.utils import progress
 from qtpy.QtWidgets import QWidget, QVBoxLayout
-from napari_intensity_step_detection.base_widgets.base_widget import NLayerWidget
+from napari_intensity_step_detection.base_widgets import (NLayerWidget, TrackMetaModelProxy,
+                                                          TrackMetaModel, AppState)
 from napari_intensity_step_detection.filter_widget.property_filter_widget import PropertyFilter
 from qtpy import uic
 from napari_intensity_step_detection import utils
-from napari_intensity_step_detection.base_widgets import AppState
 
 
 class Labels:
@@ -38,22 +38,37 @@ class TrackingWidget(NLayerWidget):
 
     def __init__(self, app_state: AppState = None, parent: QWidget = None):
         super().__init__(app_state, parent)
+        self.name = "tracking"
         # tracking controls
-        self.state = app_state
         self.filter_propery = 'length'
         self.ui = _tracking_ui(self)
         self.layout().addWidget(self.ui)
-        # self.ui.filterView.setLayout(QVBoxLayout())
-        # propertyFilter = PropertyFilter(napari_view=napari_viewer, parent=self, include_properties=['length'])
-        # propertyFilter.gbNapariLayers.setVisible(False)
-        # propertyFilter.ui.tabWidget.setVisible(False)
-        # self.ui.filterView.layout().addWidget(propertyFilter)
-        # self.ui.filterView.layout().setContentsMargins(0, 0, 0, 0)
+        self.ui.filterView.setLayout(QVBoxLayout())
+        propertyFilter = PropertyFilter(app_state=self.state, include_properties=['length'], parent=self)
+        propertyFilter.tabWidget.setVisible(False)
+        self.ui.filterView.layout().addWidget(propertyFilter)
+        self.ui.filterView.layout().setContentsMargins(0, 0, 0, 0)
 
         def _start_tracking():
             self.track()
 
         self.ui.btnTrack.clicked.connect(_start_tracking)
+
+        def _track_layer_added(event):
+            if isinstance(event.value, napari.layers.Tracks):
+                if hasattr(event.value, 'metadata') and ('all_meta' in event.value.metadata):
+                    track_meta = event.value.metadata['all_meta']
+                    tracked_df = event.value.metadata['all_tracks']
+                    self.setup_tracking_state(tracked_df=tracked_df, track_meta=track_meta)
+
+        self.state.nLayerInserted.connect(_track_layer_added)
+
+    def setup_tracking_state(self, tracked_df, track_meta):
+        self.state.setData(f"{self.name}_df", {"tracks": tracked_df, "meta": track_meta})
+        model = TrackMetaModel(track_meta, 'track_id')
+        proxy_model = TrackMetaModelProxy()
+        proxy_model.setTrackModel(model)
+        self.state.setObject(f"{self.name}_model", {"model": model, "proxy": proxy_model})
 
     def track(self):
         image = self.get_layer('Image').data
@@ -74,15 +89,10 @@ class TrackingWidget(NLayerWidget):
         # column name change from particle to track_id
         tracked_df.rename(columns={'particle': 'track_id'}, inplace=True)
 
-        pbr.update(100)
-        pbr.close()
-
         tracks, properties, track_meta = utils.pd_to_napari_tracks(tracked_df,
                                                                    Labels.track_header,
                                                                    Labels.track_meta_header)
-
-        self.state.setData("tracking_all_tracks", tracked_df)
-        self.state.setData("tracking_all_meta", track_meta)
+        self.setup_tracking_state(tracked_df=tracked_df, track_meta=track_meta)
 
         _add_to_viewer(self.viewer, Labels.tracks_layer, tracks, properties=properties,
                        metadata={'all_meta': track_meta,
@@ -92,6 +102,9 @@ class TrackingWidget(NLayerWidget):
                                      "memory": memory
                                  }
                                  })
+
+        pbr.update(100)
+        pbr.close()
 
 # Comman functions
 

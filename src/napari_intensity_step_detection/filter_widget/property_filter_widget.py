@@ -1,63 +1,67 @@
 from pathlib import Path
 from qtpy import uic
 import pandas as pd
-from napari_intensity_step_detection.base_widgets import NLayerWidget, TrackMetaModelProxy, TrackMetaModel, AppState
-from napari_intensity_step_detection.base_widgets.sliders import HFilterSlider
+from napari_intensity_step_detection.base_widgets import (NLayerWidget, AppState, HFilterSlider)
 from qtpy.QtWidgets import QWidget, QVBoxLayout
 from qtpy.QtCore import Signal
 import napari
 
 
 class PropertyFilter(QWidget):
+    propertyUpdated = Signal(str, tuple)
+
     def __init__(self, app_state: AppState = None, include_properties=None, parent: QWidget = None):
         super().__init__(parent)
         UI_FILE = Path(__file__).resolve().parent.parent.joinpath(
             'ui', 'filter_view.ui')
         self.load_ui(UI_FILE)
         self.state = app_state
-        self.setup_ui()
+        self.track_id_column_name = 'track_id'
+        self.property_sliders = {}
         if include_properties is None:
             self.include_properties = []
         else:
             self.include_properties = include_properties
 
+        self.setup_ui()
+
+        def _call_setup_ui(key, val):
+            if key == "tracking_model":
+                self.setup_ui()
+        self.state.objectUpdated.connect(_call_setup_ui)
+
     def load_ui(self, path):
         uic.loadUi(path, self)
 
     def setup_ui(self):
-        if self.get_current_track_layer() is None:
+        if not self.state.hasObject("tracking_model"):
             return
 
-        track_layer = self.get_current_track_layer()
-        track_meta = track_layer.metadata['all_meta']
-        track_all_tracks = track_layer.metadata['all_tracks']
-        self.model = TrackMetaModel(track_meta, self.track_id_column_name)
-        self.all_tracks = track_all_tracks
-        self.ui.allView.setModel(self.model)
+        models = self.state.object("tracking_model")
+        self.allView.setModel(models['model'])
+        self.filterView.setModel(models['proxy'])
+        self.filterPlots.include_properties = self.include_properties
+        self.filterPlots.setModel(models['proxy'])
 
-        self.proxy_model = TrackMetaModelProxy()
-        self.proxy_model.setTrackModel(self.model)
-        self.ui.filterView.setModel(self.proxy_model)
-        self.ui.filterPlots.include_properties = self.include_properties
-        self.ui.filterPlots.setModel(self.proxy_model)
+        dfs = self.state.data('tracking_df')
+        track_meta = dfs['meta']
         self.add_controls(track_meta)
-        self.propertyUpdated.connect(self.proxy_model.property_filter_updated)
 
-        # # setup histogram
-        # _properties = list(track_meta.columns)
-        # _properties.remove(self.track_id_column_name)
-        # self.ui.filterProperties.setItems(_properties)
+        self.propertyUpdated.connect(models['proxy'].property_filter_updated)
 
-        # def _filter_combo_chnaged():
-        #     current_text = self.ui.filterProperties.currentText()
-        #     print(current_text)
+        def _update_property_sliders(name, vrange):
+            if name in self.property_sliders:
+                slider = self.property_sliders[name]
+                if slider.value() == vrange:
+                    return
+                slider.setValue(vrange)
 
-        # self.ui.filterProperties.currentTextChanged.connect(_filter_combo_chnaged)
+        models['proxy'].filterSet.connect(_update_property_sliders)
 
     def add_controls(self, track_meta: pd.DataFrame):
-        self.ui.filterControls.setLayout(QVBoxLayout())
-        self.ui.filterControls.layout().setContentsMargins(0, 0, 0, 0)
-        self.ui.filterControls.layout().setSpacing(2)
+        self.filterControls.setLayout(QVBoxLayout())
+        self.filterControls.layout().setContentsMargins(0, 0, 0, 0)
+        self.filterControls.layout().setSpacing(2)
         for p in track_meta.columns:
             if p == self.track_id_column_name:
                 continue
@@ -70,8 +74,8 @@ class PropertyFilter(QWidget):
             _slider.setRange(_vrange)
             _slider.setValue(_vrange)
             _slider.valueChangedTitled.connect(self.propertyUpdated)
-
-            self.ui.filterControls.layout().addWidget(_slider)
+            self.property_sliders[p] = _slider
+            self.filterControls.layout().addWidget(_slider)
 
     def get_current_track_layer(self):
         return self.get_layer("Tracks")
@@ -81,72 +85,9 @@ class PropertyFilter(QWidget):
 
 
 class PropertyFilterWidget(NLayerWidget):
-    propertyUpdated = Signal(str, tuple)
 
     def __init__(self, app_state: AppState = None, parent: QWidget = None, include_properties=None):
         super().__init__(app_state=app_state, parent=parent)
-        self.ui = PropertyFilter(self, app_state=self.state, include_properties=include_properties)
+        self.ui = PropertyFilter(app_state=self.state, include_properties=include_properties, parent=self)
         self.layout().addWidget(self.ui)
-        self.track_id_column_name = 'track_id'
-        self.layer_filter = {"Tracks": napari.layers.Tracks}
-
-        def _call_setup_ui(event):
-            if isinstance(event.value, napari.layers.Tracks):
-                self.setup_ui()
-
-        self.layers_hooks.append(_call_setup_ui)
-
-    # def setup_ui(self):
-    #     if self.get_current_track_layer() is None:
-    #         return
-
-    #     track_layer = self.get_current_track_layer()
-    #     track_meta = track_layer.metadata['all_meta']
-    #     track_all_tracks = track_layer.metadata['all_tracks']
-    #     self.model = TrackMetaModel(track_meta, self.track_id_column_name)
-    #     self.all_tracks = track_all_tracks
-    #     self.ui.allView.setModel(self.model)
-
-    #     self.proxy_model = TrackMetaModelProxy()
-    #     self.proxy_model.setTrackModel(self.model)
-    #     self.ui.filterView.setModel(self.proxy_model)
-    #     self.ui.filterPlots.include_properties = self.include_properties
-    #     self.ui.filterPlots.setModel(self.proxy_model)
-    #     self.add_controls(track_meta)
-    #     self.propertyUpdated.connect(self.proxy_model.property_filter_updated)
-
-    #     # # setup histogram
-    #     # _properties = list(track_meta.columns)
-    #     # _properties.remove(self.track_id_column_name)
-    #     # self.ui.filterProperties.setItems(_properties)
-
-    #     # def _filter_combo_chnaged():
-    #     #     current_text = self.ui.filterProperties.currentText()
-    #     #     print(current_text)
-
-    #     # self.ui.filterProperties.currentTextChanged.connect(_filter_combo_chnaged)
-
-    # def add_controls(self, track_meta: pd.DataFrame):
-    #     self.ui.filterControls.setLayout(QVBoxLayout())
-    #     self.ui.filterControls.layout().setContentsMargins(0, 0, 0, 0)
-    #     self.ui.filterControls.layout().setSpacing(2)
-    #     for p in track_meta.columns:
-    #         if p == self.track_id_column_name:
-    #             continue
-    #         if (len(self.include_properties)) and (p not in self.include_properties):
-    #             continue
-    #         _slider = HFilterSlider()
-    #         _slider.setTitle(p)
-    #         _p_np = track_meta[p].to_numpy()
-    #         _vrange = (_p_np.min(), _p_np.max())
-    #         _slider.setRange(_vrange)
-    #         _slider.setValue(_vrange)
-    #         _slider.valueChangedTitled.connect(self.propertyUpdated)
-
-    #         self.ui.filterControls.layout().addWidget(_slider)
-
-    # def get_current_track_layer(self):
-    #     return self.get_layer("Tracks")
-
-    # def get_current_image_data(self):
-    #     return None if self.get_current_track_layer() is None else self.get_current_track_layer().data
+        self.gbNapariLayers.setVisible(False)

@@ -1,4 +1,4 @@
-from qtpy.QtCore import QAbstractTableModel, Qt, QModelIndex, QVariant, QObject, QSortFilterProxyModel
+from qtpy.QtCore import (Signal, QAbstractTableModel, Qt, QModelIndex, QVariant, QObject, QSortFilterProxyModel)
 import pandas as pd
 
 
@@ -41,6 +41,8 @@ class TrackMetaModel(QAbstractTableModel):
 
 
 class TrackMetaModelProxy(QSortFilterProxyModel):
+    filterSet = Signal(str, tuple)
+
     def __init__(self, parent: QObject = None):
         super(TrackMetaModelProxy, self).__init__(parent)
         self.properties = {}
@@ -82,4 +84,5 @@ class TrackMetaModelProxy(QSortFilterProxyModel):
     def property_filter_updated(self, property_name, vrange):
         print(f"property_filter_updated {property_name}, {vrange}")
         self.properties[property_name] = {'min': vrange[0], 'max': vrange[1]}
+        self.filterSet.emit(property_name, vrange)
         self.invalidateFilter()
