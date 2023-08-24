@@ -31,7 +31,7 @@
      <property name="orientation">
       <enum>Qt::Vertical</enum>
      </property>
-     <widget class="QGroupBox" name="groupBox_2">
+     <widget class="QGroupBox" name="gbHistogram">
       <property name="minimumSize">
        <size>
         <width>100</width>
@@ -70,7 +70,7 @@
        </item>
       </layout>
      </widget>
-     <widget class="QGroupBox" name="groupBox">
+     <widget class="QGroupBox" name="gbFilterControls">
       <property name="minimumSize">
        <size>
         <width>100</width>
@@ -139,7 +139,7 @@
   <customwidget>
    <class>HistogramPlotsView</class>
    <extends>QWidget</extends>
-   <header>napari_intensity_step_detection.base_widgets.plots.h</header>
+   <header>napari_intensity_step_detection.base_widgets.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

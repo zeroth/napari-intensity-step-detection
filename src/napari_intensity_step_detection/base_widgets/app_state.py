@@ -10,6 +10,10 @@ class AppState(QObject):
     dataUpdated = Signal(str, dict)
     objectUpdated = Signal(str, dict)
 
+    parametersAdded = Signal(str, dict)
+    dataAdded = Signal(str, dict)
+    objectAdded = Signal(str, dict)
+
     def __init__(self, napari_viewer: napari.viewer.Viewer = None, parent=None):
         super(AppState, self).__init__(parent=parent)
         self.viewer = napari_viewer
@@ -27,8 +31,15 @@ class AppState(QObject):
             self.viewer.layers.events.removed.connect(_removed)
 
     def setParameter(self, name, value):
+        is_added = False
+        if name not in self._parameters:
+            is_added = True
         self._parameters[name] = value
-        self.parametersUpdated.emit(name, {'value': value})
+
+        if is_added:
+            self.parametersAdded.emit(name, {'value': value})
+        else:
+            self.parametersUpdated.emit(name, {'value': value})
 
     def parameter(self, name):
         return self._parameters.get(name, None)
@@ -37,8 +48,14 @@ class AppState(QObject):
         return key in self._parameters if self._parameters else False
 
     def setData(self, name, value):
+        is_added = False
+        if name not in self._data:
+            is_added = True
         self._data[name] = value
-        self.dataUpdated.emit(name, {'value': value})
+        if is_added:
+            self.dataAdded.emit(name, {'value': value})
+        else:
+            self.dataUpdated.emit(name, {'value': value})
 
     def data(self, name):
         return self._data.get(name, None)
@@ -47,8 +64,15 @@ class AppState(QObject):
         return key in self._data if self._data else False
 
     def setObject(self, name, value):
+        is_added = False
+        if name not in self._objects:
+            is_added = True
+
         self._objects[name] = value
-        self.objectUpdated.emit(name, {'value': value})
+        if is_added:
+            self.objectAdded.emit(name, {'value': value})
+        else:
+            self.objectUpdated.emit(name, {'value': value})
 
     def object(self, name):
         return self._objects.get(name, None)

@@ -23,6 +23,7 @@
         "src/napari_intensity_step_detection/ui/filter_list_item_widget.ui",
         "src/napari_intensity_step_detection/ui/filter_view.ui",
         "src/napari_intensity_step_detection/ui/base_widget.ui",
+        "src/napari_intensity_step_detection/ui/step_analysis_widget.ui",
         
         "src/napari_intensity_step_detection/__init__.py",
         "src/napari_intensity_step_detection/_plugin_widget.py",

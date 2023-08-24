@@ -1,7 +1,7 @@
 from pathlib import Path
 from PyQt5 import uic
 import napari
-from qtpy.QtWidgets import QWidget, QFormLayout, QComboBox, QVBoxLayout, QLabel
+from qtpy.QtWidgets import QWidget, QFormLayout, QComboBox, QLabel
 from napari_intensity_step_detection.base_widgets import AppState
 
 

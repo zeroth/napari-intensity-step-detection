@@ -7,6 +7,7 @@ from matplotlib.backends.backend_qtagg import (
 from matplotlib.figure import Figure
 from qtpy.QtWidgets import QVBoxLayout, QWidget, QAbstractItemView
 from qtpy.QtCore import QModelIndex, Qt, QRect, QPoint
+from qtpy.QtGui import QRegion
 
 
 # colors = dict(
@@ -54,6 +55,83 @@ class BaseMPLWidget(QWidget):
         The Axes is saved on the ``.axes`` attribute for later access.
         """
         self.axes = self.figure.subplots()
+
+    def add_multiple_axes(self, count) -> None:
+        """
+        Add multiple Axes to the figure using count.
+        The Axes is saved on the ``.axes`` attribute for later access.
+        """
+        self.count = count
+        self.col = 2
+        self.row = int(np.ceil(self.count/self.col))
+        # print("add_multiple_axes", self.row, self.col)
+        self.grid_space = self.figure.add_gridspec(ncols=self.col, nrows=self.row)
+        # print("add_multiple_axes", self.grid_space)
+
+
+class IntensityStepPlotsWidget(BaseMPLWidget):
+
+    def __init__(
+        self,
+        parent: Optional[QWidget] = None,
+    ):
+        super().__init__(parent=parent)
+
+        # self._setup_callbacks()
+        self.add_single_axes()
+
+    def clear(self) -> None:
+        """
+        Clear any previously drawn figures.
+
+        This is a no-op, and is intended for derived classes to override.
+        """
+        self.axes.clear()
+
+    def draw(self, intensity, fitx, title) -> None:
+        self.clear()
+
+        if len(intensity):
+            _intensity = np.array(intensity)
+            self.axes.plot(_intensity.ravel(), label="Intensity", color=colors[0])
+
+        if len(fitx):
+            _fitx = np.array(fitx)
+            self.axes.plot(_fitx.ravel(), label="Steps", color=colors[1])
+
+        self.axes.legend(loc='upper right')
+        self.axes.set_title(label=title)
+
+        # needed
+        self.canvas.draw()
+
+
+class MultiHistogramWidgets(BaseMPLWidget):
+    def __init__(
+        self,
+        parent: Optional[QWidget] = None,
+    ):
+        super().__init__(parent=parent)
+
+    def clear(self) -> None:
+        self.figure.clear()
+
+    def draw(self, data: dict) -> None:
+        self.clear()
+        if not hasattr(self, 'grid_space'):
+            return
+        n_colors = len(colors)
+        # print(len(self.axes))
+        for i, (key, val) in enumerate(data.items()):
+            row = int(i / self.col)
+            col = int(i % self.col)
+            # print("MultiHistogramWidgets draw", row, col)
+            y = np.array(val)
+            ax = self.figure.add_subplot(self.grid_space[row, col])
+            ax.hist(y.ravel(), color=colors[int(i % n_colors)])
+            ax.set_title(label=key)
+        # needed
+        self.canvas.draw()
 
 
 class HistogramWidget(BaseMPLWidget):
@@ -130,6 +208,7 @@ class HistogramPlotsView(QAbstractItemView):
     def __init__(self, parent: Any = None):
         super().__init__(parent=parent)
         self.is_dirty = True
+        self.row_count = 0
         self.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
         self.plot = HistogramPlotsWidget(self.viewport())
         self.horizontalScrollBar().setValue(0)
@@ -146,6 +225,7 @@ class HistogramPlotsView(QAbstractItemView):
 
     def draw(self):
         self.plot.clear()
+
         data = {}
         for row in range(self.model().rowCount(self.rootIndex())):
             for col in range(1, self.model().columnCount(self.rootIndex())):
@@ -167,7 +247,7 @@ class HistogramPlotsView(QAbstractItemView):
         if Qt.ItemDataRole.DisplayRole not in roles:
             return
         # self.draw()
-        self.is_dirty = False
+        self.is_dirty = True
         self.viewport().update()
         # super().dataChanged(self, topLeft, bottomRight, roles)
 
@@ -201,29 +281,28 @@ class HistogramPlotsView(QAbstractItemView):
         return QModelIndex()
 
     def visualRegionForSelection(self, selection):
-        super(HistogramPlotsView, self).visualRegionForSelection(selection)
+        return QRegion()
 
     def rowsInserted(self, parent, start, end):
-        # print("rowsInserted")
+        print("rowsInserted")
         self.is_dirty = True
-        super(HistogramPlotsView, self).rowsInserted(parent, start, end)
         self.viewport().update()
+        # super(HistogramPlotsView, self).rowsInserted(parent, start, end)
 
     def rowsAboutToBeRemoved(self, parent: QModelIndex, start: int, end: int):
-        # print("rowsAboutToBeRemoved")
+        print("rowsAboutToBeRemoved")
         self.is_dirty = True
-        super(HistogramPlotsView, self).rowsAboutToBeRemoved(parent, start, end)
         self.viewport().update()
+        # super(HistogramPlotsView, self).rowsAboutToBeRemoved(parent, start, end)
 
     def paintEvent(self, event):
         # print("paintEvent")
         # super().paintEvent(self, event)
         # TODO: check dirty
-        if not self.is_dirty:
-            return super(HistogramPlotsView, self).paintEvent(event)
-        if not self.model():
-            return super(HistogramPlotsView, self).paintEvent(event)
+        if self.row_count == self.model().rowCount(self.rootIndex()):
+            return
+        self.row_count = self.model().rowCount(self.rootIndex())
         self.draw()
 
     def moveCursor(self, cursorAction, modifiers):
-        super(HistogramPlotsView, self).moveCursor(cursorAction, modifiers)
+        return self.rootIndex()

@@ -2,6 +2,7 @@ from pathlib import Path
 import napari
 from napari.utils import progress
 from qtpy.QtWidgets import QWidget, QVBoxLayout
+from qtpy.QtCore import QItemSelectionModel
 from napari_intensity_step_detection.base_widgets import (NLayerWidget, TrackMetaModelProxy,
                                                           TrackMetaModel, AppState)
 from napari_intensity_step_detection.filter_widget.property_filter_widget import PropertyFilter
@@ -57,18 +58,39 @@ class TrackingWidget(NLayerWidget):
         def _track_layer_added(event):
             if isinstance(event.value, napari.layers.Tracks):
                 if hasattr(event.value, 'metadata') and ('all_meta' in event.value.metadata):
-                    track_meta = event.value.metadata['all_meta']
-                    tracked_df = event.value.metadata['all_tracks']
+                    # self.setup_tracking(event.value)
+                    layer = event.value
+                    track_meta = layer.metadata['all_meta']
+                    tracked_df = layer.metadata['all_tracks']
                     self.setup_tracking_state(tracked_df=tracked_df, track_meta=track_meta)
 
         self.state.nLayerInserted.connect(_track_layer_added)
 
+        def _state_data_updated(key, val):
+            if key == "tracking_df":
+                dfs = self.state.data("tracking_df")
+                all_meta = dfs['meta']
+                self.setup_models(all_meta)
+
+        self.state.dataUpdated.connect(_state_data_updated)
+
     def setup_tracking_state(self, tracked_df, track_meta):
+        print("setup_tracking_state")
         self.state.setData(f"{self.name}_df", {"tracks": tracked_df, "meta": track_meta})
+        self.setup_models(track_meta)
+
+    def setup_models(self, track_meta):
+        print("setup_models")
         model = TrackMetaModel(track_meta, 'track_id')
         proxy_model = TrackMetaModelProxy()
         proxy_model.setTrackModel(model)
-        self.state.setObject(f"{self.name}_model", {"model": model, "proxy": proxy_model})
+
+        proxy_selection = QItemSelectionModel(proxy_model)
+        model_selection = QItemSelectionModel(model)
+        self.state.setObject(f"{self.name}_model", {"model": model,
+                                                    "proxy": proxy_model,
+                                                    "model_selection": model_selection,
+                                                    "proxy_selection": proxy_selection})
 
     def track(self):
         image = self.get_layer('Image').data
