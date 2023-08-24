@@ -1,4 +1,5 @@
-from qtpy.QtWidgets import QVBoxLayout, QWidget, QTabWidget
+from qtpy.QtWidgets import QVBoxLayout, QWidget, QTabWidget, QMenu, QAction, QMenuBar
+from qtpy.QtCore import Qt
 from .segmentation_widget import SegmentationWidget
 from .tracking_widget import TrackingWidget
 from .filter_widget import PropertyFilterWidget
@@ -37,6 +38,14 @@ class PluginWidget(QWidget):
                     self._track_added()
 
         self.app_state.nLayerInserted.connect(_track_layer_added)
+
+        # setup the top left Action Menu
+        self.menu_bar = QMenuBar(self)
+        file_menu = self.menu_bar.addMenu("File")
+        _save_act = QAction("save", self)
+        file_menu.triggered.connect(lambda x: print("save clicked"))
+        file_menu.addAction(_save_act)
+        self.tabs.setCornerWidget(self.menu_bar, Qt.Corner.TopLeftCorner)
 
     def _track_added(self):
         self.tabs.setTabVisible(1, True)

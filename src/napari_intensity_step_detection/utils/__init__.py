@@ -177,3 +177,14 @@ def FindSteps(data, window=20, threshold=0.5):
                       step_height, dwell_before, dwell_after, step_error])
 
     return table, fitx, gaussian_normalise
+
+
+def histogram(data, binsize=5):
+    data = np.array(data).ravel()
+    vmin = np.min(data)
+    vmax = np.max(data)
+    bins = list(np.arange(start=vmin, stop=vmax, step=binsize))
+    bins.append(bins[-1]+binsize)
+
+    hist, edges = np.histogram(data, bins=bins)
+    return hist, edges

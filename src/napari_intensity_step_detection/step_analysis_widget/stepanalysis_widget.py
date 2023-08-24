@@ -38,7 +38,7 @@ class StepAnalysisWidget(NLayerWidget):
         self.property_widget.gbHistogram.setVisible(False)
         self.property_widget.tabWidget.setTabVisible(1, False)
         self.property_widget.proxySelectionChanged.connect(self.track_selected)
-        self.ui.resultWidget.setDocumentMode(True)
+        # self.ui.resultWidget.setDocumentMode(True)
 
         def _reDrawPlot():
             if hasattr(self, "current_track"):
@@ -185,5 +185,6 @@ class StepAnalysisWidget(NLayerWidget):
 
         histogram = MultiHistogramWidgets()
         histogram.add_multiple_axes(len(data_dict))
-        histogram.draw(data=data_dict)
+        # histogram.draw(data=data_dict)
+        histogram.setData(data=data_dict)
         self.ui.resultWidget.addTab(histogram, new_tab)

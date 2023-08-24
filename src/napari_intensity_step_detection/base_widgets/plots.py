@@ -5,10 +5,12 @@ from matplotlib.backends.backend_qtagg import (
     NavigationToolbar2QT,
 )
 from matplotlib.figure import Figure
-from qtpy.QtWidgets import QVBoxLayout, QWidget, QAbstractItemView
-from qtpy.QtCore import QModelIndex, Qt, QRect, QPoint
+from qtpy.QtWidgets import QVBoxLayout, QWidget, QAbstractItemView, QGridLayout
+from qtpy.QtCore import QModelIndex, Qt, QRect, QPoint, Signal
 from qtpy.QtGui import QRegion
-
+from qtpy import uic
+from pathlib import Path
+from napari_intensity_step_detection import utils
 
 # colors = dict(
 #     COLOR_1="#DC267F",
@@ -106,6 +108,39 @@ class IntensityStepPlotsWidget(BaseMPLWidget):
         self.canvas.draw()
 
 
+class BinControlWidget(QWidget):
+    editingFinished = Signal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        UI_FILE = Path(__file__).resolve().parent.parent.joinpath(
+            'ui', 'histogram_bin_control_widget.ui')
+        self.load_ui(UI_FILE)
+        self.sbControl.editingFinished.connect(self.editingFinished)
+
+    def setTitle(self, text):
+        self.lbTitle.setText(text)
+
+    def title(self):
+        return self.lbTitle.text()
+
+    def setRange(self, vrange=(0, 1000)):
+        vmin, vmax = vrange
+        self.sbControl.setRange(vmin, vmax)
+
+    def range(self):
+        return (self.sbControl.minimum(), self.sbControl.maximum())
+
+    def setValue(self, val):
+        self.sbControl.setValue(val)
+
+    def value(self):
+        return self.sbControl.value()
+
+    def load_ui(self, path):
+        uic.loadUi(path, self)
+
+
 class MultiHistogramWidgets(BaseMPLWidget):
     def __init__(
         self,
@@ -116,22 +151,52 @@ class MultiHistogramWidgets(BaseMPLWidget):
     def clear(self) -> None:
         self.figure.clear()
 
-    def draw(self, data: dict) -> None:
+    def draw(self) -> None:
         self.clear()
         if not hasattr(self, 'grid_space'):
             return
         n_colors = len(colors)
         # print(len(self.axes))
-        for i, (key, val) in enumerate(data.items()):
+        for i, (key, val) in enumerate(self.data.items()):
             row = int(i / self.col)
             col = int(i % self.col)
             # print("MultiHistogramWidgets draw", row, col)
             y = np.array(val)
+            hist, bins = utils.histogram(y, self.controls[key].value())
             ax = self.figure.add_subplot(self.grid_space[row, col])
-            ax.hist(y.ravel(), color=colors[int(i % n_colors)])
+            ax.hist(y.ravel(), bins=bins, edgecolor='black', color=colors[int(i % n_colors)])
             ax.set_title(label=key)
         # needed
         self.canvas.draw()
+
+    def setData(self, data):
+        self.data = data
+        self.add_bin_controls()
+        self.draw()
+
+    def add_bin_controls(self):
+        if hasattr(self, 'controls'):
+            for k, v in self.controls.items():
+                del v
+            self.controls.clear()
+            del self.controls
+        if hasattr(self, 'control_toobar'):
+            del self.control_toobar
+        self.controls = {}
+        self.control_toobar = QWidget(self)
+        self.control_toobar.setMaximumHeight(105)
+        self.control_toobar.setLayout(QGridLayout())
+        self.layout().addWidget(self.control_toobar)
+        col = 3
+        for i, (key, val) in enumerate(self.data.items()):
+            y = np.array(val)
+            _control = BinControlWidget()
+            _control.setTitle(key)
+            _control.setRange((0, len(y)+1))
+            _control.setValue(len(y)*0.01)
+            self.controls[key] = _control
+            _control.editingFinished.connect(self.draw)
+            self.control_toobar.layout().addWidget(_control, int(i/col), int(i % col))
 
 
 class HistogramWidget(BaseMPLWidget):
