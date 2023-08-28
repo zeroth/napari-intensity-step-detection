@@ -172,8 +172,8 @@ class SegmentationWidget(NLayerWidget):
                 str(self.ui.filenameEdit.value()).replace("\\", "/").replace("//", "/"),
                 first_image_layer.scale
             )
-            self.state.parameters[f"{self.name}_classifier_file"] = str(
-                self.ui.filenameEdit.value()).replace("\\", "/").replace("//", "/")
+            self.state.setParameter(f"{self.name}_classifier_file",
+                                    str(self.ui.filenameEdit.value()).replace("\\", "/").replace("//", "/"))
 
         self.ui.btnTrain.clicked.connect(train_clicked)
 
@@ -239,7 +239,15 @@ class SegmentationWidget(NLayerWidget):
         notifications.show_info(
             f"Training {str(self.classifier_class.__name__)}")
 
-        classifier.train(feature_definition, annotation, images)
+        # reduce the data size
+        _ann_ind = np.argwhere(annotation >= 1)
+        _ann_ind = np.unique(_ann_ind[:, 0])
+        _ann_ind = _ann_ind.tolist()
+        _annotation = annotation[_ann_ind]
+        _images = images[_ann_ind]
+        print(_annotation.shape)
+        print(_images.shape)
+        classifier.train(feature_definition, _annotation, _images)
 
         print("Training done. Applying model...")
         notifications.show_info("Training done. Applying model...")

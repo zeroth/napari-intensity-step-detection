@@ -3,20 +3,7 @@ import json
 from typing import Any, List
 import numpy as np
 import pandas as pd
-
-"""
-class ComplexEncoder(json.JSONEncoder):
-
-    def default(self, obj):
-
-        if isinstance(obj, complex):
-
-            return [obj.real, obj.imag]
-
-        # Let the base class default method raise the TypeError
-
-        return json.JSONEncoder.default(self, obj)
-"""
+import warnings
 
 
 class NTracksEncoder(json.JSONEncoder):
@@ -47,3 +34,19 @@ def track_stats_writer(path: str, data: Any, attributes: dict) -> List[str]:
         f.write(json.dumps(output, cls=NTracksEncoder).encode('utf-8'))
 
     return [path]
+
+
+def track_stats_state_write(path: str, app_state: object) -> str:
+    """
+        from AppState Save 
+        self._data = dict()
+    """
+    if not hasattr(app_state, '_data'):
+        warnings.warn("state object is invalid! nothing to save returning..")
+        return None
+
+    data = app_state._data
+    with gzip.open(path, 'wb') as f:
+        f.write(json.dumps(data, cls=NTracksEncoder).encode('utf-8'))
+
+    return path

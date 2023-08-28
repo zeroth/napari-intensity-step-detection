@@ -4,6 +4,9 @@ import pandas as pd
 from napari_intensity_step_detection.base_widgets import (NLayerWidget, AppState, HFilterSlider)
 from qtpy.QtWidgets import QWidget, QVBoxLayout
 from qtpy.QtCore import Signal, Qt
+import warnings
+# from warnings import RuntimeWarning
+warnings.filterwarnings('ignore', category=RuntimeWarning)
 
 
 class PropertyFilter(QWidget):
@@ -25,12 +28,11 @@ class PropertyFilter(QWidget):
 
         self.setup_ui()
 
-        def _call_setup_ui(key, val):
-            if key == "tracking_model":
-                print("_call_setup_ui")
-                self.setup_ui()
-        self.state.objectAdded.connect(_call_setup_ui)
-        self.state.objectUpdated.connect(_call_setup_ui)
+        # def _call_setup_ui(key, val):
+        #     if key == "tracking_model":
+        #         print("_call_setup_ui")
+        #         self.setup_ui()
+        # self.state.objectAdded.connect(_call_setup_ui)
 
     def load_ui(self, path):
         uic.loadUi(path, self)
@@ -39,18 +41,23 @@ class PropertyFilter(QWidget):
         if not self.state.hasObject("tracking_model"):
             return
 
+        print(dir(self))
         models = self.state.object("tracking_model")
         self.allView.setModel(models['model'])
-        self.allView.setSelectionModel(models['model_selection'])
-
         self.filterView.setModel(models['proxy'])
+
+        self.allView.setSelectionModel(models['model_selection'])
         self.filterView.setSelectionModel(models['proxy_selection'])
+
         self.filterPlots.include_properties = self.include_properties
         self.filterPlots.setModel(models['proxy'])
-        dfs = self.state.data('tracking_df')
-        track_meta = dfs['meta']
-        models['proxy'].disconnect()
-        models['proxy_selection'].disconnect()
+        dfs = self.state.data('tracking')
+        track_meta = dfs['meta_df']
+        # models['proxy'].disconnect()
+        # models['proxy_selection'].disconnect()
+
+        # check if we can add controls through model itself
+        # less dependency on pandas
         self.add_controls(track_meta)
 
         def _update_property_sliders(name, vrange):
@@ -60,16 +67,18 @@ class PropertyFilter(QWidget):
                     return
                 slider.setValue(vrange)
 
-        models['proxy'].filterUpdated.connect(_update_property_sliders)
         models['proxy_selection'].currentChanged.connect(self.current_proxy_selection_changed)
         self.propertyUpdated.connect(models['proxy'].property_filter_updated)
+        models['proxy'].filterUpdated.connect(_update_property_sliders)
 
     def current_proxy_selection_changed(self, current, previous):
+        print("current_proxy_selection_changed in")
         if (not current.isValid()):
             return
-
+        print("current_proxy_selection_changed valid")
         track_id_index = self.filterView.model().index(current.row(), 0, current.parent())
         track_id = int(self.filterView.model().data(track_id_index, role=Qt.ItemDataRole.DisplayRole))
+        print(f"current_proxy_selection_changed emit {track_id}")
         self.proxySelectionChanged.emit(track_id)
 
     def add_controls(self, track_meta: pd.DataFrame):
@@ -121,3 +130,9 @@ class PropertyFilterWidget(NLayerWidget):
         self.ui = PropertyFilter(app_state=self.state, include_properties=include_properties, parent=self)
         self.layout().addWidget(self.ui)
         self.gbNapariLayers.setVisible(False)
+
+        def _call_setup_ui(key, val):
+            if key == "tracking_model":
+                print("_call_setup_ui")
+                self.ui.setup_ui()
+        self.state.objectAdded.connect(_call_setup_ui)

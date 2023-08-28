@@ -193,19 +193,16 @@
         <number>0</number>
        </property>
        <item>
-        <widget class="QScrollArea" name="scrollArea">
-         <property name="widgetResizable">
-          <bool>true</bool>
-         </property>
-         <widget class="QTabWidget" name="resultWidget">
-          <property name="geometry">
-           <rect>
-            <x>0</x>
-            <y>0</y>
-            <width>362</width>
-            <height>198</height>
-           </rect>
-          </property>
+        <widget class="QTabWidget" name="resultWidget">
+         <widget class="QWidget" name="tab">
+          <attribute name="title">
+           <string>Tab 1</string>
+          </attribute>
+         </widget>
+         <widget class="QWidget" name="tab_2">
+          <attribute name="title">
+           <string>Tab 2</string>
+          </attribute>
          </widget>
         </widget>
        </item>

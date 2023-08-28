@@ -1,8 +1,9 @@
 import gzip
 import json
-from typing import List
+from typing import List, Any
 import pandas as pd
 from napari_intensity_step_detection import utils
+import numpy as np
 
 
 def get_reader(path: str) -> List[str]:
@@ -53,3 +54,43 @@ def track_stats_reader(path: str):
     else:
         print("attribute is not a  dict")
     return [layer_data]
+
+
+class NTracksDecoder(json.JSONDecoder):
+    def __init__(self, *args, **kwargs):
+        json.JSONDecoder.__init__(self, object_hook=self.object_hook, *args, **kwargs)
+
+    def object_hook(self, dct):
+        _decodec_obj = {}
+        for k, v in dct.items():
+            if k.strip().endswith("_df"):
+                _decodec_obj[k] = pd.read_json(v)
+            else:
+                _decodec_obj[k] = v
+        return _decodec_obj
+
+
+def track_stats_state_reader(path: str) -> dict:
+    with gzip.open(path, 'rb') as f:
+        data = f.read().decode('utf-8')
+        data = json.loads(data, cls=NTracksDecoder)
+        return data
+    return None
+
+
+def main_test(path):
+    return track_stats_state_reader(path=path)
+
+
+if __name__ == "__main__":
+    path = "D:/Data/tracking_test/DYNC1H1_photobleaching/Tracking/new_state_tracks.tracks"
+    data = main_test(path)
+
+    def print_dict_keys(dct, tab=""):
+        for k, v in dct.items():
+            print(f"{tab}{k}", type(v))
+            if isinstance(v, dict):
+                print_dict_keys(v, tab=tab+"\t")
+    if (data):
+        # print(data['tracking']['tracks_df'].head())
+        print_dict_keys(data)

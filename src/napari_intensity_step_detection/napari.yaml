@@ -5,28 +5,7 @@ contributions:
     - id: napari-intensity-step-detection.plugin_widget
       python_name: napari_intensity_step_detection._plugin_widget:PluginWidget
       title: Step Detection
-    
-    - id: napari-intensity-step-detection.plugin_tracks_writer
-      python_name: napari_intensity_step_detection.tracks_writer:track_stats_writer
-      title: Save Step Detection Tracks
-    
-    - id: napari-intensity-step-detection.plugin_tracks_reader
-      python_name: napari_intensity_step_detection.tracks_reader:get_reader
-      title: Load Step Detection Tracks
-  
-  writers:
-  - command: napari-intensity-step-detection.plugin_tracks_writer
-    layer_types:
-    - tracks
-    filename_extensions:
-    - .tracks
-  
-  readers:
-  - command: napari-intensity-step-detection.plugin_tracks_reader
-    filename_patterns:
-    - '*.tracks'
-    accepts_directories: false
-    
+
   widgets:
     - command: napari-intensity-step-detection.plugin_widget
       display_name: Step Detection

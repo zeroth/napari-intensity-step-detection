@@ -8,18 +8,7 @@ from napari_intensity_step_detection.base_widgets import (NLayerWidget, TrackMet
 from napari_intensity_step_detection.filter_widget.property_filter_widget import PropertyFilter
 from qtpy import uic
 from napari_intensity_step_detection import utils
-
-
-class Labels:
-    tracks_layer = "All Tracks"
-    tracks_meta = "tracks_meta_data"
-    tracking_params = "tracking_params"
-    track_id = "track_id"
-    track_header = ['track_id', 'frame', 'y', 'x']
-    track_meta_header = ['track_id', 'length',
-                         'intensity_max', 'intensity_mean', 'intensity_min']
-    track_table_header = ['label', 'y', 'x', 'intensity_mean',
-                          'intensity_max', 'intensity_min', 'area', 'frame', 'track_id']
+from napari_intensity_step_detection.utils import TrackLabels as Labels
 
 
 class _tracking_ui(QWidget):
@@ -45,30 +34,44 @@ class TrackingWidget(NLayerWidget):
         self.ui = _tracking_ui(self)
         self.layout().addWidget(self.ui)
         self.ui.filterView.setLayout(QVBoxLayout())
-        propertyFilter = PropertyFilter(app_state=self.state, include_properties=['length'], parent=self)
-        propertyFilter.tabWidget.setVisible(False)
-        self.ui.filterView.layout().addWidget(propertyFilter)
-        self.ui.filterView.layout().setContentsMargins(0, 0, 0, 0)
 
         def _start_tracking():
             self.track()
 
         self.ui.btnTrack.clicked.connect(_start_tracking)
 
-        def _track_layer_added(event):
-            if isinstance(event.value, napari.layers.Tracks):
-                if hasattr(event.value, 'metadata') and ('all_meta' in event.value.metadata):
-                    # self.setup_tracking(event.value)
-                    layer = event.value
-                    track_meta = layer.metadata['all_meta']
-                    tracked_df = layer.metadata['all_tracks']
-                    self.setup_tracking_state(tracked_df=tracked_df, track_meta=track_meta)
+        # def _track_layer_added(event):
+        #     if isinstance(event.value, napari.layers.Tracks):
+        #         if hasattr(event.value, 'metadata') and ('all_meta' in event.value.metadata):
+        #             # self.setup_tracking(event.value)
+        #             layer = event.value
+        #             track_meta = layer.metadata['all_meta']
+        #             tracked_df = layer.metadata['all_tracks']
+        #             self.setup_tracking_state(tracked_df=tracked_df, track_meta=track_meta)
 
-        self.state.nLayerInserted.connect(_track_layer_added)
+        # self.state.nLayerInserted.connect(_track_layer_added)
+        def _track_data_added(key, val):
+            if key == "tracking":
+                if not hasattr(self, "propertyFilter"):
+                    self.propertyFilter = PropertyFilter(app_state=self.state,
+                                                         include_properties=['length'], parent=self)
+                    self.propertyFilter.tabWidget.setVisible(False)
+
+                    def _call_setup_ui(key, val):
+                        if key == "tracking_model":
+                            print("_call_setup_ui")
+                            self.propertyFilter.setup_ui()
+                    self.state.objectAdded.connect(_call_setup_ui)
+                    
+                    self.ui.filterView.layout().addWidget(self.propertyFilter)
+                    self.ui.filterView.layout().setContentsMargins(0, 0, 0, 0)
+                tracking_df = val["value"]
+                self.setup_tracking_state(tracked_df=tracking_df['tracks_df'], track_meta=tracking_df["meta_df"])
+        self.state.dataAdded.connect(_track_data_added)
 
         def _state_data_updated(key, val):
-            if key == "tracking_df":
-                dfs = self.state.data("tracking_df")
+            if key == "tracking":
+                dfs = self.state.data("tracking")
                 all_meta = dfs['meta']
                 self.setup_models(all_meta)
 
@@ -76,7 +79,7 @@ class TrackingWidget(NLayerWidget):
 
     def setup_tracking_state(self, tracked_df, track_meta):
         print("setup_tracking_state")
-        self.state.setData(f"{self.name}_df", {"tracks": tracked_df, "meta": track_meta})
+        # self.state.setData(f"{self.name}", {"tracks_df": tracked_df, "meta_df": track_meta})
         self.setup_models(track_meta)
 
     def setup_models(self, track_meta):
@@ -114,35 +117,23 @@ class TrackingWidget(NLayerWidget):
         tracks, properties, track_meta = utils.pd_to_napari_tracks(tracked_df,
                                                                    Labels.track_header,
                                                                    Labels.track_meta_header)
-        self.setup_tracking_state(tracked_df=tracked_df, track_meta=track_meta)
-
-        _add_to_viewer(self.viewer, Labels.tracks_layer, tracks, properties=properties,
-                       metadata={'all_meta': track_meta,
-                                 'all_tracks': tracked_df,
-                                 Labels.tracking_params: {
-                                     "search_range": search_range,
-                                     "memory": memory
-                                 }
-                                 })
+        # self.setup_tracking_state(tracked_df=tracked_df, track_meta=track_meta)
+        self.state.setData(f"{self.name}", {"tracks_df": tracked_df, "meta_df": track_meta})
 
         pbr.update(100)
         pbr.close()
 
+        utils.add_track_to_viewer(self.state.viewer, Labels.tracks_layer, tracks, properties=properties,
+                                  metadata={'all_meta': track_meta,
+                                            'all_tracks': tracked_df,
+                                            Labels.tracking_params: {
+                                                "search_range": search_range,
+                                                "memory": memory
+                                            }
+                                            })
+
+
 # Comman functions
-
-
-def _add_to_viewer(viewer, name, data, properties=None, scale=None, metadata=None):
-    try:
-        viewer.layers[name].data = data
-        viewer.layers[name].visible = True
-
-        if properties is not None:
-            viewer.layers[name].properties = properties
-        if metadata is not None:
-            viewer.layers[name].metadata = metadata
-    except KeyError:
-        viewer.add_tracks(data, name=name, properties=properties,
-                          scale=scale, metadata=metadata)
 
 
 def _napari_main():

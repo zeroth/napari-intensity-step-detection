@@ -8,6 +8,18 @@ import warnings
 from math import sqrt
 
 
+class TrackLabels:
+    tracks_layer = "All Tracks"
+    tracks_meta = "tracks_meta_data"
+    tracking_params = "tracking_params"
+    track_id = "track_id"
+    track_header = ['track_id', 'frame', 'y', 'x']
+    track_meta_header = ['track_id', 'length',
+                         'intensity_max', 'intensity_mean', 'intensity_min']
+    track_table_header = ['label', 'y', 'x', 'intensity_mean',
+                          'intensity_max', 'intensity_min', 'area', 'frame', 'track_id']
+
+
 def get_frame_position_properties(frame: int, mask: np.ndarray, image: np.ndarray = None, result: pd.DataFrame = None,
                                   generate_label: bool = True) -> pd.DataFrame:
     mask_label = measure.label(mask) if generate_label else mask
@@ -188,3 +200,17 @@ def histogram(data, binsize=5):
 
     hist, edges = np.histogram(data, bins=bins)
     return hist, edges
+
+
+def add_track_to_viewer(viewer, name, data, properties=None, scale=None, metadata=None):
+    try:
+        viewer.layers[name].data = data
+        viewer.layers[name].visible = True
+
+        if properties is not None:
+            viewer.layers[name].properties = properties
+        if metadata is not None:
+            viewer.layers[name].metadata = metadata
+    except KeyError:
+        viewer.add_tracks(data, name=name, properties=properties,
+                          scale=scale, metadata=metadata)

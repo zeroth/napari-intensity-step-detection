@@ -5,7 +5,7 @@ from matplotlib.backends.backend_qtagg import (
     NavigationToolbar2QT,
 )
 from matplotlib.figure import Figure
-from qtpy.QtWidgets import QVBoxLayout, QWidget, QAbstractItemView, QGridLayout
+from qtpy.QtWidgets import QVBoxLayout, QWidget, QAbstractItemView
 from qtpy.QtCore import QModelIndex, Qt, QRect, QPoint, Signal
 from qtpy.QtGui import QRegion
 from qtpy import uic
@@ -25,87 +25,6 @@ colors = list([
     "#785EF0",
     "#FE6100",
     "#FFB000"])
-
-
-class BaseMPLWidget(QWidget):
-    def __init__(
-        self,
-        parent: Optional[QWidget] = None,
-    ):
-        super().__init__(parent=parent)
-
-        self.canvas = FigureCanvas()
-        self.toolbar = NavigationToolbar2QT(
-            self.canvas, parent=self
-        )
-
-        self.canvas.figure.set_layout_engine("constrained")
-
-        self.setLayout(QVBoxLayout())
-        self.layout().addWidget(self.toolbar)
-        self.layout().addWidget(self.canvas)
-
-    @property
-    def figure(self) -> Figure:
-        """Matplotlib figure."""
-        return self.canvas.figure
-
-    def add_single_axes(self) -> None:
-        """
-        Add a single Axes to the figure.
-
-        The Axes is saved on the ``.axes`` attribute for later access.
-        """
-        self.axes = self.figure.subplots()
-
-    def add_multiple_axes(self, count) -> None:
-        """
-        Add multiple Axes to the figure using count.
-        The Axes is saved on the ``.axes`` attribute for later access.
-        """
-        self.count = count
-        self.col = 2
-        self.row = int(np.ceil(self.count/self.col))
-        # print("add_multiple_axes", self.row, self.col)
-        self.grid_space = self.figure.add_gridspec(ncols=self.col, nrows=self.row)
-        # print("add_multiple_axes", self.grid_space)
-
-
-class IntensityStepPlotsWidget(BaseMPLWidget):
-
-    def __init__(
-        self,
-        parent: Optional[QWidget] = None,
-    ):
-        super().__init__(parent=parent)
-
-        # self._setup_callbacks()
-        self.add_single_axes()
-
-    def clear(self) -> None:
-        """
-        Clear any previously drawn figures.
-
-        This is a no-op, and is intended for derived classes to override.
-        """
-        self.axes.clear()
-
-    def draw(self, intensity, fitx, title) -> None:
-        self.clear()
-
-        if len(intensity):
-            _intensity = np.array(intensity)
-            self.axes.plot(_intensity.ravel(), label="Intensity", color=colors[0])
-
-        if len(fitx):
-            _fitx = np.array(fitx)
-            self.axes.plot(_fitx.ravel(), label="Steps", color=colors[1])
-
-        self.axes.legend(loc='upper right')
-        self.axes.set_title(label=title)
-
-        # needed
-        self.canvas.draw()
 
 
 class BinControlWidget(QWidget):
@@ -141,62 +60,85 @@ class BinControlWidget(QWidget):
         uic.loadUi(path, self)
 
 
-class MultiHistogramWidgets(BaseMPLWidget):
+class BaseMPLWidget(QWidget):
     def __init__(
         self,
         parent: Optional[QWidget] = None,
     ):
         super().__init__(parent=parent)
 
-    def clear(self) -> None:
-        self.figure.clear()
+        self.canvas = FigureCanvas()
+        self.toolbar = NavigationToolbar2QT(
+            self.canvas, parent=self, coordinates=False
+        )
 
-    def draw(self) -> None:
+        self.canvas.figure.set_layout_engine("constrained")
+
+        self.setLayout(QVBoxLayout())
+        self.layout().addWidget(self.toolbar)
+        self.layout().addWidget(self.canvas)
+
+    @property
+    def figure(self) -> Figure:
+        """Matplotlib figure."""
+        return self.canvas.figure
+
+    def add_single_axes(self) -> None:
+        """
+        Add a single Axes to the figure.
+
+        The Axes is saved on the ``.axes`` attribute for later access.
+        """
+        self.axes = self.figure.subplots()
+
+    def add_multiple_axes(self, count) -> None:
+        """
+        Add multiple Axes to the figure using count.
+        The Axes is saved on the ``.axes`` attribute for later access.
+        """
+        self.count = count
+        self.col = 2
+        self.row = int(np.ceil(self.count/self.col))
+        # print("add_multiple_axes", self.row, self.col)
+        self.grid_space = self.figure.add_gridspec(ncols=self.col, nrows=self.row)
+        # print("add_multiple_axes", self.grid_space)
+
+    def clear(self) -> None:
+        """
+        Clear any previously drawn figures.
+
+        This is a no-op, and is intended for derived classes to override.
+        """
+        self.axes.clear()
+
+
+class IntensityStepPlotsWidget(BaseMPLWidget):
+
+    def __init__(
+        self,
+        parent: Optional[QWidget] = None,
+    ):
+        super().__init__(parent=parent)
+
+        # self._setup_callbacks()
+        self.add_single_axes()
+
+    def draw(self, intensity, fitx, title) -> None:
         self.clear()
-        if not hasattr(self, 'grid_space'):
-            return
-        n_colors = len(colors)
-        # print(len(self.axes))
-        for i, (key, val) in enumerate(self.data.items()):
-            row = int(i / self.col)
-            col = int(i % self.col)
-            # print("MultiHistogramWidgets draw", row, col)
-            y = np.array(val)
-            hist, bins = utils.histogram(y, self.controls[key].value())
-            ax = self.figure.add_subplot(self.grid_space[row, col])
-            ax.hist(y.ravel(), bins=bins, edgecolor='black', color=colors[int(i % n_colors)])
-            ax.set_title(label=key)
+
+        if len(intensity):
+            _intensity = np.array(intensity)
+            self.axes.plot(_intensity.ravel(), label="Intensity", color=colors[0])
+
+        if len(fitx):
+            _fitx = np.array(fitx)
+            self.axes.plot(_fitx.ravel(), label="Steps", color=colors[1])
+
+        self.axes.legend(loc='upper right')
+        self.axes.set_title(label=title)
+
         # needed
         self.canvas.draw()
-
-    def setData(self, data):
-        self.data = data
-        self.add_bin_controls()
-        self.draw()
-
-    def add_bin_controls(self):
-        if hasattr(self, 'controls'):
-            for k, v in self.controls.items():
-                del v
-            self.controls.clear()
-            del self.controls
-        if hasattr(self, 'control_toobar'):
-            del self.control_toobar
-        self.controls = {}
-        self.control_toobar = QWidget(self)
-        self.control_toobar.setMaximumHeight(105)
-        self.control_toobar.setLayout(QGridLayout())
-        self.layout().addWidget(self.control_toobar)
-        col = 3
-        for i, (key, val) in enumerate(self.data.items()):
-            y = np.array(val)
-            _control = BinControlWidget()
-            _control.setTitle(key)
-            _control.setRange((0, len(y)+1))
-            _control.setValue(len(y)*0.01)
-            self.controls[key] = _control
-            _control.editingFinished.connect(self.draw)
-            self.control_toobar.layout().addWidget(_control, int(i/col), int(i % col))
 
 
 class HistogramWidget(BaseMPLWidget):
@@ -211,59 +153,56 @@ class HistogramWidget(BaseMPLWidget):
         self.add_single_axes()
         self.data = []
         self.label = None
-        self.color = None
+        self.color = colors[0]
+        self.control = BinControlWidget()
+        self.toolbar.addWidget(self.control)
+        self.control.setTitle("bin size")
+        self.control.setRange((0, 2147483647))
+        self.control.setValue(5)
+        if hasattr(self.toolbar, "coordinates"):
+            self.toolbar.coordinates = False
 
-    def clear(self) -> None:
-        """
-        Clear any previously drawn figures.
+    def _get_dict_length(self, data):
+        _size = []
+        if isinstance(data, dict):
+            for k, v in data.items():
+                _size.append(len(v))
+            return np.max(_size)
 
-        This is a no-op, and is intended for derived classes to override.
-        """
-        self.axes.clear()
-
-    def draw(self, data, label, bins=256, color=colors[1]) -> None:
-        self.clear()
-        if len(data):
+    def setData(self, data, title):
+        if isinstance(data, dict):
             self.data = data
-            self.label = label
-            self.color = color
-            y = np.array(self.data)
-            self.axes.hist(y.ravel(), bins=bins, label=label)
-            self.axes.legend(loc='upper right')
+        else:
+            self.data = np.array(data).ravel()
+            self.control.setRange((0, len(data)+1))
+            self.control.setValue(len(data)*0.01)
 
-        # needed
-        self.canvas.draw()
+        self.label = title
+        self.control.editingFinished.connect(self.draw)
 
+    def setColor(self, color):
+        self.color = color
 
-class HistogramPlotsWidget(BaseMPLWidget):
-    def __init__(
-        self,
-        parent: Optional[QWidget] = None,
-    ):
-        super().__init__(parent=parent)
-
-        # self._setup_callbacks()
-        self.add_single_axes()
-
-    def clear(self) -> None:
-        """
-        Clear any previously drawn figures.
-
-        This is a no-op, and is intended for derived classes to override.
-        """
-        self.axes.clear()
-
-    def draw(self, data) -> None:
+    def draw(self) -> None:
         self.clear()
-        print("HistogramPlotsWidget draw")
-        n_colors = len(colors)
-        for i, (p, v) in enumerate(data.items()):
-            color = colors[int(i % n_colors)]
-            value = np.array(v).ravel()
-            # hist, _bin_e = np.histogram(value, bins=int(len(value)*0.1))
-            # self.axes.plot(hist, color=color, label=p, alpha=0.5)
-            self.axes.hist(value, color=color, label=p, alpha=0.5)
-            self.axes.legend(loc='upper right')
+
+        if isinstance(self.data, dict):
+            n_colors = len(colors)
+            for i, (p, v) in enumerate(self.data.items()):
+                color = colors[int(i % n_colors)]
+                value = np.array(v).ravel()
+                # hist, _bin_e = np.histogram(value, bins=int(len(value)*0.1))
+                # self.axes.plot(hist, color=color, label=p, alpha=0.5)
+                hist, bins = utils.histogram(value, self.control.value())
+                self.axes.hist(value, bins=bins, edgecolor='black', linewidth=0.5, color=color, label=p, alpha=0.5)
+                self.axes.legend(loc='upper right')
+        else:
+            if len(self.data):
+                hist, bins = utils.histogram(self.data, self.control.value())
+                self.axes.hist(self.data, bins=bins, edgecolor='black',
+                               linewidth=0.5, color=self.color, label=self.label)
+                self.axes.set_title(label=self.label)
+                self.axes.legend(loc='upper right')
 
         # needed
         self.canvas.draw()
@@ -275,7 +214,7 @@ class HistogramPlotsView(QAbstractItemView):
         self.is_dirty = True
         self.row_count = 0
         self.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
-        self.plot = HistogramPlotsWidget(self.viewport())
+        self.plot = HistogramWidget(self.viewport())
         self.horizontalScrollBar().setValue(0)
         self.verticalScrollBar().setValue(0)
         self.include_properties = []
@@ -304,7 +243,8 @@ class HistogramPlotsView(QAbstractItemView):
                 else:
                     data[_property].append(val)
 
-        self.plot.draw(data=data)
+        self.plot.setData(data=data, title="Filtered View")
+        self.plot.draw()
         self.is_dirty = False
 
     def dataChanged(self, topLeft: QModelIndex, bottomRight: QModelIndex, roles: List[Any]):

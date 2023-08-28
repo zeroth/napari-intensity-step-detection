@@ -1,4 +1,4 @@
-from napari_intensity_step_detection.base_widgets import NLayerWidget, AppState, MultiHistogramWidgets
+from napari_intensity_step_detection.base_widgets import NLayerWidget, AppState, GrigHistogramWidgets
 from napari_intensity_step_detection.filter_widget import PropertyFilter
 from qtpy.QtWidgets import QWidget, QVBoxLayout
 from qtpy.QtCore import Qt
@@ -29,8 +29,16 @@ class StepAnalysisWidget(NLayerWidget):
         self.ui = _step_analysis_ui(self)
         self.layout().addWidget(self.ui)
         self.gbNapariLayers.setVisible(False)
+        self.ui.resultWidget.clear()
 
         self.property_widget = PropertyFilter(self.state, parent=self)
+
+        def _call_setup_ui(key, val):
+            if key == "tracking_model":
+                print("_call_setup_ui")
+                self.property_widget.setup_ui()
+        self.state.objectAdded.connect(_call_setup_ui)
+
         self.ui.filterTable.setLayout(QVBoxLayout())
         self.ui.filterTable.layout().addWidget(self.property_widget)
 
@@ -63,9 +71,10 @@ class StepAnalysisWidget(NLayerWidget):
         self.ui.btnOriantation.clicked.connect(_toggle_oriantation)
 
     def track_selected(self, track_id):
+        print(f"track_selected {track_id}")
         self.current_track = track_id
-        tracks_df = self.state.data("tracking_df")
-        all_tracks = tracks_df['tracks']
+        tracks_df = self.state.data("tracking")
+        all_tracks = tracks_df['tracks_df']
         if 'intensity_mean' in all_tracks.columns:
             track = all_tracks[all_tracks['track_id'] == track_id]
             intensity = track['intensity_mean'].to_numpy()
@@ -79,8 +88,8 @@ class StepAnalysisWidget(NLayerWidget):
         models = self.state.object("tracking_model")
         proxy_model = models['proxy']
 
-        dfs = self.state.data("tracking_df")
-        all_tracks = dfs['tracks']
+        dfs = self.state.data("tracking")
+        all_tracks = dfs['tracks_df']
         step_meta = []
         steps_info = pd.DataFrame()
         rows = proxy_model.rowCount()
@@ -129,8 +138,8 @@ class StepAnalysisWidget(NLayerWidget):
         step_meta_df = pd.DataFrame(data=step_meta,
                                     columns=['track_id', 'step_count', 'negetive_steps',
                                              'positive_steps', 'step_height', 'max_intensity', 'length'])
-        _result = {'steps': steps_info,
-                   'steps_meta': step_meta_df,
+        _result = {'steps_df': steps_info,
+                   'steps_meta_df': step_meta_df,
                    'track_filter': proxy_model.properties,
                    'parameters': {'window': window, 'threshold': threshold}}
         result_title = f"{window}_{threshold}_1"
@@ -160,31 +169,30 @@ class StepAnalysisWidget(NLayerWidget):
             current_tabs.append(tab_title)
 
         # new_tab = results[0]
-        new_tab = list(set(results) - set(current_tabs))[0]
+        new_tabs = list(set(results) - set(current_tabs))
         # if len(current_tabs):
         #     for r in results:
         #         if r not in current_tabs:
         #             new_tab = r
         #             break
+        for new_tab in new_tabs:
+            stepanalysis_data = result_obj[new_tab]
+            step_meta: pd.DataFrame = stepanalysis_data['steps_meta_df']
+            data_dict = {}
+            data_dict['step_count'] = step_meta['step_count'].to_numpy()
+            data_dict['negetive_vs_positive'] = np.hstack([step_meta['negetive_steps'].to_numpy(),
+                                                           step_meta['positive_steps'].to_numpy()])
+            data_dict['single_step_height'] = np.abs(
+                (step_meta[step_meta['step_count'] == 1]['step_height']).to_numpy())
+            data_dict['max_intensity'] = step_meta['max_intensity'].to_numpy()
+            data_dict['step_height'] = np.abs((stepanalysis_data['steps_df']['step_height']).to_numpy())
+            data_dict['track_length'] = step_meta['length'].to_numpy()
+            # for c in step_meta.columns:
+            #     if c == "track_id":
+            #         continue
 
-        stepanalysis_data = result_obj[new_tab]
-        step_meta: pd.DataFrame = stepanalysis_data['steps_meta']
-        data_dict = {}
-        data_dict['step_count'] = step_meta['step_count'].to_numpy()
-        data_dict['negetive_vs_positive'] = np.hstack([step_meta['negetive_steps'].to_numpy(),
-                                                       step_meta['positive_steps'].to_numpy()])
-        data_dict['single_step_height'] = np.abs((step_meta[step_meta['step_count'] == 1]['step_height']).to_numpy())
-        data_dict['max_intensity'] = step_meta['max_intensity'].to_numpy()
-        data_dict['step_height'] = np.abs((stepanalysis_data['steps']['step_height']).to_numpy())
-        data_dict['track_length'] = step_meta['length'].to_numpy()
-        # for c in step_meta.columns:
-        #     if c == "track_id":
-        #         continue
+            #     data_dict[c] = step_meta[c].to_numpy()
 
-        #     data_dict[c] = step_meta[c].to_numpy()
-
-        histogram = MultiHistogramWidgets()
-        histogram.add_multiple_axes(len(data_dict))
-        # histogram.draw(data=data_dict)
-        histogram.setData(data=data_dict)
-        self.ui.resultWidget.addTab(histogram, new_tab)
+            histogram = GrigHistogramWidgets()
+            histogram.setData(data=data_dict)
+            self.ui.resultWidget.addTab(histogram, new_tab)
