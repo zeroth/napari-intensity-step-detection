@@ -1,0 +1,11 @@
+name: napari-intensity-step-detection
+display_name: Intensity Step Detection
+contributions:
+  commands:
+    - id: napari-intensity-step-detection.plugin_widget
+      python_name: napari_intensity_step_detection._plugin_widget:PluginWidget
+      title: Step Detection
+
+  widgets:
+    - command: napari-intensity-step-detection.plugin_widget
+      display_name: Step Detection
