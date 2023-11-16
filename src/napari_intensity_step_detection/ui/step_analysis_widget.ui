@@ -1,7 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
+<<<<<<< HEAD
  <class>Form</class>
  <widget class="QWidget" name="Form">
+=======
+ <class>StepAnalysisWidget</class>
+ <widget class="QWidget" name="StepAnalysisWidget">
+>>>>>>> dev
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -15,6 +20,7 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_4">
    <item>
+<<<<<<< HEAD
     <layout class="QHBoxLayout" name="horizontalLayout_2">
      <item>
       <spacer name="horizontalSpacer_2">
@@ -45,6 +51,8 @@
     </layout>
    </item>
    <item>
+=======
+>>>>>>> dev
     <widget class="QSplitter" name="splitter">
      <property name="orientation">
       <enum>Qt::Vertical</enum>
@@ -61,7 +69,11 @@
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_5">
        <item>
+<<<<<<< HEAD
         <widget class="IntensityStepPlotsWidget" name="intensityPlot" native="true"/>
+=======
+        <widget class="IntensityStepPlots" name="intensityPlot" native="true"/>
+>>>>>>> dev
        </item>
       </layout>
      </widget>
@@ -193,6 +205,7 @@
         <number>0</number>
        </property>
        <item>
+<<<<<<< HEAD
         <widget class="QScrollArea" name="scrollArea">
          <property name="widgetResizable">
           <bool>true</bool>
@@ -206,6 +219,18 @@
             <height>198</height>
            </rect>
           </property>
+=======
+        <widget class="QTabWidget" name="resultWidget">
+         <widget class="QWidget" name="tab">
+          <attribute name="title">
+           <string>Tab 1</string>
+          </attribute>
+         </widget>
+         <widget class="QWidget" name="tab_2">
+          <attribute name="title">
+           <string>Tab 2</string>
+          </attribute>
+>>>>>>> dev
          </widget>
         </widget>
        </item>
@@ -217,9 +242,15 @@
  </widget>
  <customwidgets>
   <customwidget>
+<<<<<<< HEAD
    <class>IntensityStepPlotsWidget</class>
    <extends>QWidget</extends>
    <header>napari_intensity_step_detection.base_widgets.h</header>
+=======
+   <class>IntensityStepPlots</class>
+   <extends>QWidget</extends>
+   <header>napari_intensity_step_detection.base.h</header>
+>>>>>>> dev
    <container>1</container>
   </customwidget>
  </customwidgets>

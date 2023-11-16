@@ -1,8 +1,13 @@
 from pathlib import Path
 from qtpy.QtWidgets import QWidget, QVBoxLayout, QLabel, QCheckBox
 from qtpy.QtWidgets import QGridLayout
+<<<<<<< HEAD
 from napari_intensity_step_detection.base_widgets.base_widget import NLayerWidget
 from napari_intensity_step_detection.base_widgets import AppState
+=======
+from napari_intensity_step_detection.base.widget import NLayerWidget
+from napari_intensity_step_detection.base import AppState
+>>>>>>> dev
 from magicgui.widgets import FileEdit
 from magicgui.types import FileDialogMode
 import warnings
@@ -172,8 +177,13 @@ class SegmentationWidget(NLayerWidget):
                 str(self.ui.filenameEdit.value()).replace("\\", "/").replace("//", "/"),
                 first_image_layer.scale
             )
+<<<<<<< HEAD
             self.state.parameters[f"{self.name}_classifier_file"] = str(
                 self.ui.filenameEdit.value()).replace("\\", "/").replace("//", "/")
+=======
+            self.state.setParameter(f"{self.name}_classifier_file",
+                                    str(self.ui.filenameEdit.value()).replace("\\", "/").replace("//", "/"))
+>>>>>>> dev
 
         self.ui.btnTrain.clicked.connect(train_clicked)
 
@@ -239,7 +249,19 @@ class SegmentationWidget(NLayerWidget):
         notifications.show_info(
             f"Training {str(self.classifier_class.__name__)}")
 
+<<<<<<< HEAD
         classifier.train(feature_definition, annotation, images)
+=======
+        # reduce the data size
+        _ann_ind = np.argwhere(annotation >= 1)
+        _ann_ind = np.unique(_ann_ind[:, 0])
+        _ann_ind = _ann_ind.tolist()
+        _annotation = annotation[_ann_ind]
+        _images = images[_ann_ind]
+        print(_annotation.shape)
+        print(_images.shape)
+        classifier.train(feature_definition, _annotation, _images)
+>>>>>>> dev
 
         print("Training done. Applying model...")
         notifications.show_info("Training done. Applying model...")

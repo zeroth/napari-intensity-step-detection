@@ -1,8 +1,15 @@
 from pathlib import Path
+<<<<<<< HEAD:src/napari_intensity_step_detection/base_widgets/base_widget.py
 from PyQt5 import uic
 import napari
 from qtpy.QtWidgets import QWidget, QFormLayout, QComboBox, QLabel
 from napari_intensity_step_detection.base_widgets import AppState
+=======
+from qtpy import uic
+import napari
+from qtpy.QtWidgets import QWidget, QFormLayout, QComboBox, QLabel
+from napari_intensity_step_detection.base import AppState
+>>>>>>> dev:src/napari_intensity_step_detection/base/widget.py
 
 
 class NLayerWidget(QWidget):

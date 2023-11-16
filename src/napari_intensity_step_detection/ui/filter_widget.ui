@@ -1,7 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
+<<<<<<< HEAD:src/napari_intensity_step_detection/ui/filter_view.ui
  <class>Form</class>
  <widget class="QWidget" name="Form">
+=======
+ <class>FilterViewWidget</class>
+ <widget class="QWidget" name="FilterViewWidget">
+>>>>>>> dev:src/napari_intensity_step_detection/ui/filter_widget.ui
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -42,6 +47,7 @@
        <string>Histogram</string>
       </property>
       <layout class="QGridLayout" name="gridLayout">
+<<<<<<< HEAD:src/napari_intensity_step_detection/ui/filter_view.ui
        <item row="0" column="0">
         <spacer name="horizontalSpacer">
          <property name="orientation">
@@ -60,6 +66,10 @@
        </item>
        <item row="1" column="0" colspan="2">
         <widget class="HistogramPlotsView" name="filterPlots" native="true">
+=======
+       <item row="0" column="0" colspan="2">
+        <widget class="PropertiesHistogram" name="filterPlots" native="true">
+>>>>>>> dev:src/napari_intensity_step_detection/ui/filter_widget.ui
          <property name="maximumSize">
           <size>
            <width>16777215</width>
@@ -92,7 +102,11 @@
             <x>0</x>
             <y>0</y>
             <width>380</width>
+<<<<<<< HEAD:src/napari_intensity_step_detection/ui/filter_view.ui
             <height>89</height>
+=======
+            <height>90</height>
+>>>>>>> dev:src/napari_intensity_step_detection/ui/filter_widget.ui
            </rect>
           </property>
          </widget>
@@ -137,9 +151,15 @@
  </widget>
  <customwidgets>
   <customwidget>
+<<<<<<< HEAD:src/napari_intensity_step_detection/ui/filter_view.ui
    <class>HistogramPlotsView</class>
    <extends>QWidget</extends>
    <header>napari_intensity_step_detection.base_widgets.h</header>
+=======
+   <class>PropertiesHistogram</class>
+   <extends>QWidget</extends>
+   <header>napari_intensity_step_detection.filter_widget.h</header>
+>>>>>>> dev:src/napari_intensity_step_detection/ui/filter_widget.ui
    <container>1</container>
   </customwidget>
  </customwidgets>

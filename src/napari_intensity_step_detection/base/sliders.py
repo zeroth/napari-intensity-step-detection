@@ -28,6 +28,11 @@ class _h_slider_ui(QWidget):
 
     def setRange(self, vrange):
         vmin, vmax = vrange
+<<<<<<< HEAD:src/napari_intensity_step_detection/base_widgets/sliders.py
+=======
+        if vmin == vmax:
+            vmax = vmin+1
+>>>>>>> dev:src/napari_intensity_step_detection/base/sliders.py
         self.leMin.setText(str(vmin))
         self.leMax.setText(str(vmax))
         self.hSlider.setRange(vmin, vmax)
@@ -36,6 +41,11 @@ class _h_slider_ui(QWidget):
         return (self.hSlider.minimum(), self.hSlider.maximum())
 
     def setValue(self, vrange):
+<<<<<<< HEAD:src/napari_intensity_step_detection/base_widgets/sliders.py
+=======
+        if vrange[0] == vrange[1]:
+            vrange = (vrange[0], vrange[0]+1)
+>>>>>>> dev:src/napari_intensity_step_detection/base/sliders.py
         self.hSlider.setValue(vrange)
 
     def value(self):
@@ -78,6 +88,12 @@ class _h_slider_ui(QWidget):
 
 
 class HRangeSlider(QWidget):
+<<<<<<< HEAD:src/napari_intensity_step_detection/base_widgets/sliders.py
+=======
+    """
+    Horizontal slider
+    """
+>>>>>>> dev:src/napari_intensity_step_detection/base/sliders.py
     valueChanged = Signal(tuple)
 
     def __init__(self, parent: QWidget = None) -> None:

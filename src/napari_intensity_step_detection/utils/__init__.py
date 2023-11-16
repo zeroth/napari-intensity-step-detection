@@ -6,6 +6,22 @@ from tqdm import tqdm
 import napari
 import warnings
 from math import sqrt
+<<<<<<< HEAD
+=======
+from pathlib import Path
+
+
+class TrackLabels:
+    tracks_layer = "All Tracks"
+    tracks_meta = "tracks_meta_data"
+    tracking_params = "tracking_params"
+    track_id = "track_id"
+    track_header = ['track_id', 'frame', 'y', 'x']
+    track_meta_header = ['track_id', 'length',
+                         'intensity_max', 'intensity_mean', 'intensity_min']
+    track_table_header = ['label', 'y', 'x', 'intensity_mean',
+                          'intensity_max', 'intensity_min', 'area', 'frame', 'track_id']
+>>>>>>> dev
 
 
 def get_frame_position_properties(frame: int, mask: np.ndarray, image: np.ndarray = None, result: pd.DataFrame = None,
@@ -177,3 +193,53 @@ def FindSteps(data, window=20, threshold=0.5):
                       step_height, dwell_before, dwell_after, step_error])
 
     return table, fitx, gaussian_normalise
+<<<<<<< HEAD
+=======
+
+
+def histogram(data, binsize=5):
+    try:
+        data = np.array(data).ravel()
+        vmin = np.min(data)
+        vmax = np.max(data)
+        # if abs(vmax - vmin) <= binsize:
+        #     binsize = 1 if np.std(data) == 0 else np.std(data)
+        if vmin == vmax:
+            vmax = vmin+1
+        bins = list(np.arange(start=vmin, stop=vmax, step=binsize))
+        bins.append(bins[-1]+binsize)
+    except Exception as err:
+        print(f"vmin {vmin}, vmax {vmax}, binsize = {binsize}")
+        print(f"{err=}, {type(err)=}")
+        raise
+
+    hist, edges = np.histogram(data, bins=bins)
+    return hist, edges, binsize
+
+
+def add_track_to_viewer(viewer, name, data, properties=None, scale=None, metadata=None):
+    try:
+        viewer.layers[name].data = data
+        viewer.layers[name].visible = True
+
+        if properties is not None:
+            viewer.layers[name].properties = properties
+        if metadata is not None:
+            viewer.layers[name].metadata = metadata
+    except KeyError:
+        viewer.add_tracks(data, name=name, properties=properties,
+                          scale=scale, metadata=metadata)
+
+
+def get_icon(name, size=(32, 32)):
+    from qtpy.QtGui import QPixmap, QIcon
+    from qtpy.QtCore import Qt
+    icon_path = str(Path(__file__).parent.parent.resolve().joinpath(
+        'ui', 'icons', f'{name}.svg'))
+    px = QPixmap(icon_path).scaled(size[0], size[1])
+    pxr = QPixmap(px.size())
+    pxr.fill(Qt.white)
+    pxr.setMask(px.createMaskFromColor(Qt.transparent))
+    icon = QIcon(pxr)
+    return icon
+>>>>>>> dev
