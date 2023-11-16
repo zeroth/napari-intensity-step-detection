@@ -1,8 +1,8 @@
 from pathlib import Path
 from qtpy.QtWidgets import QWidget, QVBoxLayout, QLabel, QCheckBox
 from qtpy.QtWidgets import QGridLayout
-from napari_intensity_step_detection.base_widgets.base_widget import NLayerWidget
-from napari_intensity_step_detection.base_widgets import AppState
+from napari_intensity_step_detection.base.widget import NLayerWidget
+from napari_intensity_step_detection.base import AppState
 from magicgui.widgets import FileEdit
 from magicgui.types import FileDialogMode
 import warnings

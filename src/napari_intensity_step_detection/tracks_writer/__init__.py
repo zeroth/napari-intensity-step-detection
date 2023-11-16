@@ -36,7 +36,7 @@ def track_stats_writer(path: str, data: Any, attributes: dict) -> List[str]:
     return [path]
 
 
-def track_stats_state_write(path: str, app_state: object) -> str:
+def state_write(path: str, app_state: object) -> str:
     """
         from AppState Save 
         self._data = dict()

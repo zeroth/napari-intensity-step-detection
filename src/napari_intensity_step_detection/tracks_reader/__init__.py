@@ -70,7 +70,7 @@ class NTracksDecoder(json.JSONDecoder):
         return _decodec_obj
 
 
-def track_stats_state_reader(path: str) -> dict:
+def state_reader(path: str) -> dict:
     with gzip.open(path, 'rb') as f:
         data = f.read().decode('utf-8')
         data = json.loads(data, cls=NTracksDecoder)
@@ -79,7 +79,7 @@ def track_stats_state_reader(path: str) -> dict:
 
 
 def main_test(path):
-    return track_stats_state_reader(path=path)
+    return state_reader(path=path)
 
 
 if __name__ == "__main__":

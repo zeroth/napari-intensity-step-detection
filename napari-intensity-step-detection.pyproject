@@ -24,6 +24,7 @@
         "src/napari_intensity_step_detection/ui/filter_view.ui",
         "src/napari_intensity_step_detection/ui/base_widget.ui",
         "src/napari_intensity_step_detection/ui/step_analysis_widget.ui",
+        "src/napari_intensity_step_detection/ui/step_analysis_result_widget.ui",
         "src/napari_intensity_step_detection/ui/histogram_bin_control_widget.ui",
         
         "src/napari_intensity_step_detection/__init__.py",

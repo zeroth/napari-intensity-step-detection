@@ -6,6 +6,7 @@ from tqdm import tqdm
 import napari
 import warnings
 from math import sqrt
+from pathlib import Path
 
 
 class TrackLabels:
@@ -192,14 +193,23 @@ def FindSteps(data, window=20, threshold=0.5):
 
 
 def histogram(data, binsize=5):
-    data = np.array(data).ravel()
-    vmin = np.min(data)
-    vmax = np.max(data)
-    bins = list(np.arange(start=vmin, stop=vmax, step=binsize))
-    bins.append(bins[-1]+binsize)
+    try:
+        data = np.array(data).ravel()
+        vmin = np.min(data)
+        vmax = np.max(data)
+        # if abs(vmax - vmin) <= binsize:
+        #     binsize = 1 if np.std(data) == 0 else np.std(data)
+        if vmin == vmax:
+            vmax = vmin+1
+        bins = list(np.arange(start=vmin, stop=vmax, step=binsize))
+        bins.append(bins[-1]+binsize)
+    except Exception as err:
+        print(f"vmin {vmin}, vmax {vmax}, binsize = {binsize}")
+        print(f"{err=}, {type(err)=}")
+        raise
 
     hist, edges = np.histogram(data, bins=bins)
-    return hist, edges
+    return hist, edges, binsize
 
 
 def add_track_to_viewer(viewer, name, data, properties=None, scale=None, metadata=None):
@@ -214,3 +224,16 @@ def add_track_to_viewer(viewer, name, data, properties=None, scale=None, metadat
     except KeyError:
         viewer.add_tracks(data, name=name, properties=properties,
                           scale=scale, metadata=metadata)
+
+
+def get_icon(name, size=(32, 32)):
+    from qtpy.QtGui import QPixmap, QIcon
+    from qtpy.QtCore import Qt
+    icon_path = str(Path(__file__).parent.parent.resolve().joinpath(
+        'ui', 'icons', f'{name}.svg'))
+    px = QPixmap(icon_path).scaled(size[0], size[1])
+    pxr = QPixmap(px.size())
+    pxr.fill(Qt.white)
+    pxr.setMask(px.createMaskFromColor(Qt.transparent))
+    icon = QIcon(pxr)
+    return icon

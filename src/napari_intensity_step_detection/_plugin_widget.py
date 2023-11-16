@@ -1,10 +1,12 @@
 from qtpy.QtWidgets import QVBoxLayout, QWidget, QTabWidget, QToolButton, QStyle, QHBoxLayout, QFileDialog
 from qtpy.QtCore import Qt
-from .segmentation_widget import SegmentationWidget
-from .tracking_widget import TrackingWidget
-from .filter_widget import PropertyFilterWidget
-from .base_widgets import AppState
-from .step_analysis_widget import StepAnalysisWidget
+from qtpy.QtGui import QPixmap, QIcon
+from napari_intensity_step_detection.segmentation_widget import SegmentationWidget
+from napari_intensity_step_detection.tracking_widget import TrackingWidget
+from napari_intensity_step_detection.filter_widget import PropertyFilter
+from napari_intensity_step_detection.base import AppState
+from napari_intensity_step_detection.step_analysis_widget import StepAnalysisWidget
+from napari_intensity_step_detection import utils
 import napari
 import os
 from pathlib import Path
@@ -24,7 +26,7 @@ class PluginWidget(QWidget):
         self.tabs.addTab(self.segmentation_widget, "Segmentation")
 
         self.tracking_widget = TrackingWidget(app_state=self.app_state)
-        self.property_filter_widget = PropertyFilterWidget(app_state=self.app_state)
+        self.property_filter_widget = PropertyFilter(app_state=self.app_state)
         self.stepanalysis_widget = StepAnalysisWidget(app_state=self.app_state)
         self.tabs.addTab(self.tracking_widget, "Tracking")
         self.tabs.addTab(self.property_filter_widget, "Properties Filter")
@@ -89,7 +91,7 @@ class PluginWidget(QWidget):
 
         # right corner
         self.btn_oriantation = QToolButton()
-        self.btn_oriantation.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_ArrowRight))
+        self.btn_oriantation.setIcon(utils.get_icon('rotate'))
         self.btn_oriantation.clicked.connect(self.app_state.toggleOriantation)
 
         self.tabs.setCornerWidget(corner_widget, Qt.Corner.TopLeftCorner)
@@ -102,3 +104,15 @@ class PluginWidget(QWidget):
         # self.tabs.setTabVisible(1, True)
         self.tabs.setTabVisible(2, True)
         self.tabs.setTabVisible(3, True)
+
+
+def _napari_main():
+    import napari
+    viewer = napari.Viewer()
+    win = PluginWidget(viewer)
+    viewer.window.add_dock_widget(win, name="Plugin", area="right")
+    napari.run()
+
+
+if __name__ == "__main__":
+    _napari_main()

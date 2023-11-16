@@ -1,11 +1,10 @@
 from pathlib import Path
-import napari
 from napari.utils import progress
 from qtpy.QtWidgets import QWidget, QVBoxLayout
 from qtpy.QtCore import QItemSelectionModel
-from napari_intensity_step_detection.base_widgets import (NLayerWidget, TrackMetaModelProxy,
-                                                          TrackMetaModel, AppState)
-from napari_intensity_step_detection.filter_widget.property_filter_widget import PropertyFilter
+from napari_intensity_step_detection.base import NLayerWidget, AppState
+from napari_intensity_step_detection.tracking_widget.track_models import TrackMetaModel, TrackMetaModelProxy
+from napari_intensity_step_detection.filter_widget.property_filter_widget import FilterWidget
 from qtpy import uic
 from napari_intensity_step_detection import utils
 from napari_intensity_step_detection.utils import TrackLabels as Labels
@@ -53,7 +52,7 @@ class TrackingWidget(NLayerWidget):
         def _track_data_added(key, val):
             if key == "tracking":
                 if not hasattr(self, "propertyFilter"):
-                    self.propertyFilter = PropertyFilter(app_state=self.state,
+                    self.propertyFilter = FilterWidget(app_state=self.state,
                                                          include_properties=['length'], parent=self)
                     self.propertyFilter.tabWidget.setVisible(False)
 
@@ -62,7 +61,8 @@ class TrackingWidget(NLayerWidget):
                             print("_call_setup_ui")
                             self.propertyFilter.setup_ui()
                     self.state.objectAdded.connect(_call_setup_ui)
-                    
+                    self.state.objectUpdated.connect(_call_setup_ui)
+
                     self.ui.filterView.layout().addWidget(self.propertyFilter)
                     self.ui.filterView.layout().setContentsMargins(0, 0, 0, 0)
                 tracking_df = val["value"]
@@ -72,7 +72,7 @@ class TrackingWidget(NLayerWidget):
         def _state_data_updated(key, val):
             if key == "tracking":
                 dfs = self.state.data("tracking")
-                all_meta = dfs['meta']
+                all_meta = dfs['meta_df']
                 self.setup_models(all_meta)
 
         self.state.dataUpdated.connect(_state_data_updated)
