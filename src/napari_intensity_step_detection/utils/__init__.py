@@ -7,6 +7,7 @@ import napari
 import warnings
 from math import sqrt
 from pathlib import Path
+from skimage.draw import disk
 
 
 class TrackLabels:
@@ -237,3 +238,24 @@ def get_icon(name, size=(32, 32)):
     pxr.setMask(px.createMaskFromColor(Qt.transparent))
     icon = QIcon(pxr)
     return icon
+
+
+def draw_points(image, points, radius=1, fill_value=255):
+    # points = points[:,:2]
+    def map_bound(limit):
+        def fun(val):
+            # logging.info("befor: limit %d. val %d", limit, val)
+            if val >= limit:
+                val = limit-1
+            elif val < 0:
+                val = 0
+            # logging.info("after: limit %d. val %d", limit, val)
+            return val
+        return fun
+
+    for y, x, r in points:
+        rr, cc = disk((y, x), radius=r*sqrt(2))
+        rr = np.array(list(map(map_bound(image.shape[0]), rr)), dtype='uint16')
+        cc = np.array(list(map(map_bound(image.shape[1]), cc)), dtype='uint16')
+        image[rr, cc] = fill_value
+    return image

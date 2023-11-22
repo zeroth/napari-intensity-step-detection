@@ -12,6 +12,7 @@ from napari.utils import progress
 import numpy as np
 from napari.utils import notifications
 from qtpy import uic
+import napari_intensity_step_detection.utils as utils
 
 
 class FileEditWidget(QWidget):
@@ -133,6 +134,30 @@ class _segmentation_ui(QWidget):
         uic.loadUi(path, self)
 
 
+class _walking_average_ui(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        UI_FILE = Path(__file__).resolve().parent.parent.joinpath(
+            'ui', 'walking_average.ui')
+        self.load_ui(UI_FILE)
+        self.windowSizeSpinner.setMinimum(1)
+        self.windowSizeSpinner.setValue(4)
+        # Blob_Log
+        self.minSigmaSpinner.setMinimum(1.0)
+        self.minSigmaSpinner.setValue(1.0)
+        self.maxSigmaSpinner.setMinimum(1.0)
+        self.maxSigmaSpinner.setValue(2.0)
+        self.numSigmaSpinner.setMinimum(1)
+        self.numSigmaSpinner.setValue(10)
+        self.thresholdSpinner.setMinimum(0.0)
+        self.thresholdSpinner.setValue(0.1)
+        self.overlapSpinner.setMinimum(0.0)
+        self.overlapSpinner.setValue(0.5)
+
+    def load_ui(self, path):
+        uic.loadUi(path, self)
+
+
 class SegmentationWidget(NLayerWidget):
     def __init__(self, app_state: AppState = None, parent=None):
         super().__init__(app_state=app_state, parent=parent)
@@ -140,8 +165,46 @@ class SegmentationWidget(NLayerWidget):
         self.classifier_class = PixelClassifier
         self.current_annotation = None
         self.ui = _segmentation_ui(self)
+        self.avg_ui = _walking_average_ui(self)
+        self.layout().addWidget(self.avg_ui)
         self.layout().addWidget(self.ui)
         # self.layout().setContentsMargins(0, 0, 0, 0)
+
+        # walking average button
+        def roalling_average_clicked(*arg, **kwargs):
+            if self.get_current_image() is None:
+                warnings.warn("Please select image!")
+                notifications.show_warning(
+                    "Please select image!")
+                return
+
+            self.walking_average(
+                self.get_current_image(),
+                self.avg_ui.windowSizeSpinner.value()
+            )
+
+        self.avg_ui.btnAvg.clicked.connect(roalling_average_clicked)
+
+        # quick segment button
+        def quick_segment_clicked(*arg, **kwargs):
+            if self.get_current_image() is None:
+                warnings.warn("Please select image!")
+                notifications.show_warning(
+                    "Please select image!")
+                return
+
+            label_layer = self.get_current_label()
+            self.quick_segment_2d(
+                image_layer=self.get_current_image(),
+                label_layer=label_layer,
+                min_sigma=self.avg_ui.minSigmaSpinner.value(),
+                max_sigma=self.avg_ui.maxSigmaSpinner.value(),
+                num_sigma=self.avg_ui.numSigmaSpinner.value(),
+                threshold=self.avg_ui.thresholdSpinner.value(),
+                overlap=self.avg_ui.overlapSpinner.value()
+            )
+
+        self.avg_ui.btnLog.clicked.connect(quick_segment_clicked)
 
         # Train button
 
@@ -152,10 +215,10 @@ class SegmentationWidget(NLayerWidget):
                     "No ground truth annotation selected!")
                 return
 
-            if not self.check_image_sizes():
-                warnings.warn(
-                    "Selected images and annotation must have the same dimensionality and size!")
-                return
+            # if not self.check_image_sizes():
+            #     warnings.warn(
+            #         "Selected images and annotation must have the same dimensionality and size!")
+            #     return
 
             if len(self.get_current_image_data()) == 0:
                 warnings.warn("Please select image/channel[s] to train on.")
@@ -281,6 +344,43 @@ class SegmentationWidget(NLayerWidget):
 
         _add_to_viewer(self.state.viewer, False, "Result of " +
                        short_filename, result, scale)
+
+    def walking_average(self, image_layer, window: int = 4):
+        image = image_layer.data
+        ret = np.cumsum(image, axis=0, dtype=image.dtype)
+        ret[window:] = ret[window:] - ret[:-window]
+        ret = ret[window - 1:] / window
+        _add_to_viewer(self.state.viewer, True, f"{image_layer.name}_Walking_Avg_{window}", ret, image_layer.scale)
+
+    def quick_segment_2d(self, image_layer, label_layer, min_sigma: float = 1.0, max_sigma: float = 2.0,
+                         num_sigma: int = 10, threshold: float = 0.1, overlap: float = 0.5):
+        from skimage.feature import blob_log
+        from skimage.exposure import rescale_intensity
+
+        if self.state.viewer.dims.ndisplay != 2:
+            warnings.warn("Plese sqitch to 2d Display Mode!")
+            notifications.show_warning(
+                "Plese sqitch to 2d Display Mode!")
+            return
+        image = image_layer.data[self.state.viewer.dims.current_step[0]]
+        if label_layer is not None:
+            label = label_layer.data[self.state.viewer.dims.current_step[0]]
+        else:
+            label_layer = self.state.viewer.add_labels(
+                np.zeros(image_layer.data.shape, dtype=np.uint8),
+                name="Annotation_Label")
+            label = label_layer.data[self.state.viewer.dims.current_step[0]]
+
+        im_range = np.min(image), np.max(image)
+        image = rescale_intensity(image, in_range=im_range, out_range=(0, 1))
+        blobs_log = blob_log(image, min_sigma=min_sigma, max_sigma=max_sigma,
+                             num_sigma=num_sigma, threshold=threshold, overlap=overlap)
+        print(blobs_log)
+        print(f"Current pointer : {self.state.viewer.dims.current_step[0]}")
+        label = utils.draw_points(label, blobs_log, fill_value=2)
+        # self.state.viewer.layers['Annotation_Label'].data[self.state.viewer.dims.current_step[0]] = label
+        label_layer.data[self.state.viewer.dims.current_step[0]] = label
+        self.state.viewer.reset_view()
 
 
 def _add_to_viewer(viewer, as_image, name, data, scale=None):
