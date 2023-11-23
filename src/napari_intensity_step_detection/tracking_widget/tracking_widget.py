@@ -53,7 +53,7 @@ class TrackingWidget(NLayerWidget):
             if key == "tracking":
                 if not hasattr(self, "propertyFilter"):
                     self.propertyFilter = FilterWidget(app_state=self.state,
-                                                         include_properties=['length'], parent=self)
+                                                       include_properties=['length'], parent=self)
                     self.propertyFilter.tabWidget.setVisible(False)
 
                     def _call_setup_ui(key, val):

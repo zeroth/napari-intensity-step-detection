@@ -377,7 +377,7 @@ class SegmentationWidget(NLayerWidget):
                              num_sigma=num_sigma, threshold=threshold, overlap=overlap)
         print(blobs_log)
         print(f"Current pointer : {self.state.viewer.dims.current_step[0]}")
-        label = utils.draw_points(label, blobs_log, fill_value=2)
+        label = utils.draw_points(label, blobs_log, fill_value=2, outline_value=1)
         # self.state.viewer.layers['Annotation_Label'].data[self.state.viewer.dims.current_step[0]] = label
         label_layer.data[self.state.viewer.dims.current_step[0]] = label
         self.state.viewer.reset_view()

@@ -7,7 +7,7 @@ import napari
 import warnings
 from math import sqrt
 from pathlib import Path
-from skimage.draw import disk
+from skimage.draw import disk, circle_perimeter
 
 
 class TrackLabels:
@@ -240,7 +240,7 @@ def get_icon(name, size=(32, 32)):
     return icon
 
 
-def draw_points(image, points, radius=1, fill_value=255):
+def draw_points(image, points, radius=1, fill_value=255, outline_value=0):
     # points = points[:,:2]
     def map_bound(limit):
         def fun(val):
@@ -254,8 +254,13 @@ def draw_points(image, points, radius=1, fill_value=255):
         return fun
 
     for y, x, r in points:
-        rr, cc = disk((y, x), radius=r*sqrt(2))
+        _radius = r*sqrt(2)
+        rr, cc = disk((y, x), radius=_radius, shape=image.shape)
         rr = np.array(list(map(map_bound(image.shape[0]), rr)), dtype='uint16')
         cc = np.array(list(map(map_bound(image.shape[1]), cc)), dtype='uint16')
         image[rr, cc] = fill_value
+        if outline_value > 0:
+            o_rr, o_cc = circle_perimeter(int(y), int(x), radius=int(np.ceil(_radius)), shape=image.shape)
+            image[o_rr, o_cc] = outline_value
+
     return image
