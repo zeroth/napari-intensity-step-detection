@@ -51,20 +51,20 @@ class TrackingWidget(NLayerWidget):
         # self.state.nLayerInserted.connect(_track_layer_added)
         def _track_data_added(key, val):
             if key == "tracking":
-                if not hasattr(self, "propertyFilter"):
-                    self.propertyFilter = FilterWidget(app_state=self.state,
-                                                       include_properties=['length'], parent=self)
-                    self.propertyFilter.tabWidget.setVisible(False)
+                # if not hasattr(self, "propertyFilter"):
+                #     self.propertyFilter = FilterWidget(app_state=self.state,
+                #                                        include_properties=['length'], parent=self)
+                #     self.propertyFilter.tabWidget.setVisible(False)
 
-                    def _call_setup_ui(key, val):
-                        if key == "tracking_model":
-                            print("_call_setup_ui")
-                            self.propertyFilter.setup_ui()
-                    self.state.objectAdded.connect(_call_setup_ui)
-                    self.state.objectUpdated.connect(_call_setup_ui)
+                #     def _call_setup_ui(key, val):
+                #         if key == "tracking_model":
+                #             print("_call_setup_ui")
+                #             self.propertyFilter.setup_ui()
+                #     self.state.objectAdded.connect(_call_setup_ui)
+                #     self.state.objectUpdated.connect(_call_setup_ui)
 
-                    self.ui.filterView.layout().addWidget(self.propertyFilter)
-                    self.ui.filterView.layout().setContentsMargins(0, 0, 0, 0)
+                #     self.ui.filterView.layout().addWidget(self.propertyFilter)
+                #     self.ui.filterView.layout().setContentsMargins(0, 0, 0, 0)
                 tracking_df = val["value"]
                 self.setup_tracking_state(tracked_df=tracking_df['tracks_df'], track_meta=tracking_df["meta_df"])
         self.state.dataAdded.connect(_track_data_added)

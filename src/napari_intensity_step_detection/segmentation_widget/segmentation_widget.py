@@ -130,6 +130,11 @@ class _segmentation_ui(QWidget):
                                      the more trees should be used to retrieve a reliable and robust classifier. \
                                      The more trees, the longer processing will take.")
 
+        self.chkRemoveSmallObj.setChecked(True)
+        self.chkRemoveSmallObj.stateChanged.connect(self.minObjSizeSpinner.setEnabled)
+        self.minObjSizeSpinner.setMinimum(0)
+        self.minObjSizeSpinner.setValue(6)
+
     def load_ui(self, path):
         uic.loadUi(path, self)
 
@@ -233,7 +238,8 @@ class SegmentationWidget(NLayerWidget):
                 self.ui.numMaxDepthSpinner.value(),
                 self.ui.numTreesSpinner.value(),
                 str(self.ui.filenameEdit.value()).replace("\\", "/").replace("//", "/"),
-                first_image_layer.scale
+                first_image_layer.scale,
+                self.ui.minObjSizeSpinner.value() if self.ui.chkRemoveSmallObj.isChecked() else None
             )
             self.state.setParameter(f"{self.name}_classifier_file",
                                     str(self.ui.filenameEdit.value()).replace("\\", "/").replace("//", "/"))
@@ -274,7 +280,8 @@ class SegmentationWidget(NLayerWidget):
             return False
         return np.array_equal(image.shape, mask.shape)
 
-    def train(self, images, annotation, feature_definition, num_max_depth, num_trees, filename, scale=None):
+    def train(self, images, annotation, feature_definition, num_max_depth, num_trees, filename, scale=None,
+              min_obj_size=None):
         print("train " + str(self.classifier_class.__name__))
         print("num images", len(images.shape))
         print("features", feature_definition)
@@ -314,12 +321,13 @@ class SegmentationWidget(NLayerWidget):
 
         print("Training done. Applying model...")
         notifications.show_info("Training done. Applying model...")
-        self.predict(images=images, filename=filename, scale=scale)
+        self.predict(images=images, filename=filename, scale=scale, min_obj_size=min_obj_size)
 
-    def predict(self, images, filename, scale):
+    def predict(self, images, filename, scale, min_obj_size=None):
         print("predict")
         print("num images", len(images))
         print("file", filename)
+        import pyclesperanto_prototype as cle
 
         if len(images) == 0:
             warnings.warn("No image[s] selected")
@@ -329,16 +337,33 @@ class SegmentationWidget(NLayerWidget):
             images = images[0]
 
         clf = self.classifier_class(opencl_filename=filename)
-        result = np.zeros(images.shape, dtype=images.dtype)
+        result = np.zeros(images.shape, dtype=np.uint16)
+        
+        min_obj_size_gradiant = np.ceil(
+            np.linspace(min_obj_size, 1, images.shape[0])).astype(
+            np.uint16) if min_obj_size is not None else None
+        
         if len(images.shape) >= 3:
             for i in progress(range(images.shape[0]), desc="Predicting..."):
-                result[i] = np.asarray(clf.predict(image=images[i]))
+                result[i] = np.asarray(
+                    cle.equal_constant(clf.predict(image=images[i]),
+                                       constant=2)) if min_obj_size is None else utils.remove_small_objects(
+                    np.asarray(cle.equal_constant(clf.predict(image=images[i]), constant=2)),
+                    min_size=min_obj_size_gradiant[i])
+                # print(result[i])
+                # np.asarray(clf.predict(image=images[i]))
         else:
-            result = np.asarray(clf.predict(image=images))
+            result = np.asarray(
+                cle.equal_constant(clf.predict(image=images),
+                                   constant=2)) if min_obj_size is None else utils.remove_small_objects(
+                np.asarray(cle.equal_constant(clf.predict(image=images),
+                                              constant=2)),
+                min_size=min_obj_size)
+
         print("Applying / prediction done.")
         notifications.show_info("Applying / prediction done.")
-        import pyclesperanto_prototype as cle
-        result = cle.equal_constant(result, constant=2)
+        # import pyclesperanto_prototype as cle
+        # result = cle.equal_constant(result, constant=2)
 
         short_filename = filename.split("/")[-1]
 

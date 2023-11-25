@@ -42,6 +42,24 @@
        <widget class="FeatureSelector" name="featureSelector" native="true"/>
       </item>
       <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_4">
+        <item>
+         <widget class="QCheckBox" name="chkRemoveSmallObj">
+          <property name="text">
+           <string>Remove Small Objects</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QSpinBox" name="minObjSizeSpinner">
+          <property name="specialValueText">
+           <string>Min Object Size Px</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
        <layout class="QHBoxLayout" name="horizontalLayout_3">
         <item>
          <layout class="QVBoxLayout" name="verticalLayout">
