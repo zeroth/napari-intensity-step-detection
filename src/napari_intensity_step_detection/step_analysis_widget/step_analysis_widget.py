@@ -71,9 +71,9 @@ class ResultWidget(QWidget):
         print(file_path)
         df = self.data['steps_df']
         df.to_csv(file_path[0])
-        # temp
-        meta_path = file_path[0].replace('.csv', '_meta.csv')
-        self.data['steps_meta_df'].to_csv(meta_path)
+        # # temp
+        # meta_path = file_path[0].replace('.csv', '_meta.csv')
+        # self.data['steps_meta_df'].to_csv(meta_path)
 
 
 class _step_analysis_ui(QWidget):
