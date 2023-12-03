@@ -42,8 +42,20 @@ class ResultWidget(QWidget):
 
         for i in range(1, max_step_count+1):
             track_ids = (step_meta[step_meta['step_count'] == i]['track_id']).to_list()
-            data_dict[f'step_count_{i}_step_length'] = np.abs((
-                step_info[step_info['track_id'].isin(track_ids)]['dwell_before']).to_numpy())
+            tracks_group = step_info[step_info['track_id'].isin(track_ids)].groupby('track_id')
+            for j in range(0, i):
+                print(f"step_count_{i}_step_{j+1}_dwell_before")
+                data_dict[f'step_count_{i}_step_{j+1}_dwell_before'] = np.abs(
+                     tracks_group['dwell_before'].nth(j).to_numpy())
+                # data_dict[f'step_count_{i}_step_{j}_dwell_after'] = np.abs(
+                #     tracks_group['dwell_after'].nth(j-1).to_numpy())
+                # data_dict[f'step_count_{i}_step_{j}_step_height'] = np.abs(
+                #     tracks_group['step_height'].nth(j-1).to_numpy())
+                # data_dict[f'step_count_{i}_step_{j}_step_length'] = np.abs(
+                #     tracks_group['dwell_before'].nth(j-1).to_numpy())
+
+            # data_dict[f'step_count_{i}_step_length'] = np.abs((
+            #     step_info[step_info['track_id'].isin(track_ids)]['dwell_before']).to_numpy())
 
         self.histogram.setData(data=data_dict)
         self.btnExport.clicked.connect(self.export)

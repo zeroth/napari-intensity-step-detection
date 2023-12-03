@@ -1,6 +1,6 @@
 # launch_napari.py
 from napari import Viewer, run
-import tifffile
+# import tifffile
 # from qtpy.uic import compileUi
 # from pathlib import Path
 # from pprint import pprint
