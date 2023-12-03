@@ -26,6 +26,7 @@ class ResultWidget(QWidget):
 
     def setup_ui(self):
         step_meta: pd.DataFrame = self.data['steps_meta_df']
+        step_info: pd.DataFrame = self.data['steps_df']
         data_dict = {}
         data_dict['step_count'] = step_meta['step_count'].to_numpy()
         data_dict['negetive_vs_positive'] = np.hstack([step_meta['negetive_steps'].to_numpy(),
@@ -35,6 +36,15 @@ class ResultWidget(QWidget):
         data_dict['max_intensity'] = step_meta['max_intensity'].to_numpy()
         data_dict['step_height'] = np.abs((self.data['steps_df']['step_height']).to_numpy())
         data_dict['track_length'] = step_meta['length'].to_numpy()
+
+        # step length
+        max_step_count = np.max(data_dict['step_count'])
+
+        for i in range(1, max_step_count+1):
+            track_ids = (step_meta[step_meta['step_count'] == i]['track_id']).to_list()
+            data_dict[f'step_count_{i}_step_length'] = np.abs((
+                step_info[step_info['track_id'].isin(track_ids)]['dwell_before']).to_numpy())
+
         self.histogram.setData(data=data_dict)
         self.btnExport.clicked.connect(self.export)
 
@@ -49,6 +59,9 @@ class ResultWidget(QWidget):
         print(file_path)
         df = self.data['steps_df']
         df.to_csv(file_path[0])
+        # temp
+        meta_path = file_path[0].replace('.csv', '_meta.csv')
+        self.data['steps_meta_df'].to_csv(meta_path)
 
 
 class _step_analysis_ui(QWidget):

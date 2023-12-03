@@ -1,5 +1,7 @@
 include LICENSE
 include README.md
+include src/napari-intensity-step-detection/ui/*.ui
+include src/napari-intensity-step-detection/ui/icons/*.svg
 
 recursive-exclude * __pycache__
 recursive-exclude * *.py[co]

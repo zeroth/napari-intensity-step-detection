@@ -196,6 +196,7 @@ def FindSteps(data, window=20, threshold=0.5):
 def histogram(data, binsize=5):
     try:
         data = np.array(data).ravel()
+        data = data[~np.isnan(data)]
         vmin = np.min(data)
         vmax = np.max(data)
         # if abs(vmax - vmin) <= binsize:
