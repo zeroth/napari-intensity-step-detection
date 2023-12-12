@@ -47,15 +47,6 @@ class ResultWidget(QWidget):
                 print(f"step_count_{i}_step_{j+1}_dwell_before")
                 data_dict[f'step_count_{i}_step_{j+1}_dwell_before'] = np.abs(
                      tracks_group['dwell_before'].nth(j).to_numpy())
-                # data_dict[f'step_count_{i}_step_{j}_dwell_after'] = np.abs(
-                #     tracks_group['dwell_after'].nth(j-1).to_numpy())
-                # data_dict[f'step_count_{i}_step_{j}_step_height'] = np.abs(
-                #     tracks_group['step_height'].nth(j-1).to_numpy())
-                # data_dict[f'step_count_{i}_step_{j}_step_length'] = np.abs(
-                #     tracks_group['dwell_before'].nth(j-1).to_numpy())
-
-            # data_dict[f'step_count_{i}_step_length'] = np.abs((
-            #     step_info[step_info['track_id'].isin(track_ids)]['dwell_before']).to_numpy())
 
         self.histogram.setData(data=data_dict)
         self.btnExport.clicked.connect(self.export)
@@ -71,9 +62,6 @@ class ResultWidget(QWidget):
         print(file_path)
         df = self.data['steps_df']
         df.to_csv(file_path[0])
-        # # temp
-        # meta_path = file_path[0].replace('.csv', '_meta.csv')
-        # self.data['steps_meta_df'].to_csv(meta_path)
 
 
 class _step_analysis_ui(QWidget):
@@ -175,7 +163,6 @@ class StepAnalysisWidget(NLayerWidget):
                                                  window=window,
                                                  threshold=threshold)
 
-            # all_tracks.loc[all_tracks['track_id'] == track_id, 'fit'] = fitx
             # Detail step table
             steps_df = pd.DataFrame(steptable,
                                     columns=["step_index", "level_before", "level_after",
@@ -223,9 +210,6 @@ class StepAnalysisWidget(NLayerWidget):
         result[result_title] = _result
         self.state.setData("stepanalysis_result", result)
 
-        # steps_info.to_csv('step_info.csv')
-        # step_meta_df.to_csv('step_meta.csv')
-
     def render_plots(self):
         # ['track_id', 'step_count', 'negetive_steps','positive_steps', 'step_height', 'max_intensity']
         result_obj = self.state.data("stepanalysis_result")
@@ -249,7 +233,6 @@ def _qt_main():
     import sys
     app = QApplication(sys.argv)
     widget = QWidget()
-    # widget.setIcon(utils.get_icon('file-export'))
     widget.show()
     sys.exit(app.exec())
 
