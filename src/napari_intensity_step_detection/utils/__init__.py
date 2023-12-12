@@ -206,7 +206,7 @@ def histogram(data, binsize=5):
         bins = list(np.arange(start=vmin, stop=vmax, step=binsize))
         bins.append(bins[-1]+binsize)
     except Exception as err:
-        print(f"vmin {vmin}, vmax {vmax}, binsize = {binsize}")
+        # print(f"vmin {vmin}, vmax {vmax}, binsize = {binsize}")
         print(f"{err=}, {type(err)=}")
         raise
 
