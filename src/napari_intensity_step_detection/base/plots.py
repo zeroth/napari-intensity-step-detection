@@ -5,6 +5,7 @@ from matplotlib.backends.backend_qtagg import (
     NavigationToolbar2QT,
 )
 from matplotlib.figure import Figure
+from matplotlib.layout_engine import ConstrainedLayoutEngine, TightLayoutEngine
 from qtpy.QtWidgets import QVBoxLayout, QWidget, QAbstractItemView
 from qtpy.QtCore import QModelIndex, Qt, QRect, QPoint, Signal
 from qtpy.QtGui import QRegion, QIntValidator
@@ -65,12 +66,13 @@ class BaseMPLWidget(QWidget):
     ):
         super().__init__(parent=parent)
 
-        self.canvas = FigureCanvas()
+        self.canvas = FigureCanvas(Figure(figsize=(40, 40)))
         self.toolbar = NavigationToolbar2QT(
             self.canvas, parent=self, coordinates=False
         )
 
         self.canvas.figure.set_layout_engine("constrained")
+        # self.canvas.figure.set_layout_engine("compressed")
 
         self.setLayout(QVBoxLayout())
         self.layout().addWidget(self.toolbar)
@@ -94,12 +96,18 @@ class BaseMPLWidget(QWidget):
         Add multiple Axes to the figure using count.
         The Axes is saved on the ``.axes`` attribute for later access.
         """
+        self.figure.clear()
         self.count = count
-        self.col = 2
-        self.row = int(np.ceil(self.count/self.col))
-        # print("add_multiple_axes", self.row, self.col)
-        self.grid_space = self.figure.add_gridspec(ncols=self.col, nrows=self.row)
+        # self.col = count
+        # self.row = count
+        # # print("add_multiple_axes", self.row, self.col)
+        self.grid_space = self.figure.add_gridspec(ncols=self.count, nrows=self.count, hspace=0, wspace=0)
+        # params = self.grid_space.get_subplot_params()
+        self.axes = self.grid_space.subplots(sharex='col', sharey='row')
+        # self.axes = self.figure.subplots(count, count, sharex=True, sharey=True,
+        #                                  gridspec_kw={'hspace': 0, 'wspace': 0})
         # print("add_multiple_axes", self.grid_space)
+        # print("params : ", params.left, params.right, params.top, params.bottom, params.wspace, params.hspace)
 
     def clear(self) -> None:
         """
@@ -107,7 +115,12 @@ class BaseMPLWidget(QWidget):
 
         This is a no-op, and is intended for derived classes to override.
         """
-        self.axes.clear()
+        # print("clear", type(self.axes))
+        if isinstance(self.axes, np.ndarray):
+            for ax in self.axes.ravel():
+                ax.clear()
+        else:
+            self.axes.clear()
 
 
 class IntensityStepPlots(BaseMPLWidget):
@@ -206,3 +219,78 @@ class Histogram(BaseMPLWidget):
         # needed
         self.canvas.draw()
 
+
+class HistogramMultiAxes(BaseMPLWidget):
+
+    def __init__(
+        self,
+        parent: Optional[QWidget] = None,
+        count: int = 1
+    ):
+        super().__init__(parent=parent)
+        self.canvas.figure.set_layout_engine(None)
+        bb = self.figure.get_tightbbox()
+        print("canvas.get_width_height()", self.canvas.get_width_height())
+
+        print("bounds ", bb.bounds)
+        print("extents ", bb.extents)
+
+        # self._setup_callbacks()
+        self.add_multiple_axes(count=count)
+        self.data = []
+        self.label = None
+        self.color = colors[0]
+        self.control = HistogramBinSize()
+        self.toolbar.addSeparator()
+        self.toolbar.addWidget(self.control)
+        self.control.setTitle("Bin Size")
+        self.control.setValue(5)
+        if hasattr(self.toolbar, "coordinates"):
+            self.toolbar.coordinates = False
+
+    def _get_dict_length(self, data):
+        _size = []
+        if isinstance(data, dict):
+            for k, v in data.items():
+                _size.append(len(v))
+            return np.max(_size)
+
+    def setData(self, data, title):
+        self.data = data
+        self.label = title
+        self.control.editingFinished.connect(self.draw)
+
+    def setColor(self, color):
+        self.color = color
+
+    def draw(self) -> None:
+        self.clear()
+        n_colors = len(colors)
+        i_max = len(self.data) - 1
+        bb = self.figure.get_tightbbox()
+        first_axes = self.axes[0, 0]
+        last_axes = self.axes[i_max, i_max]
+        print("first_axes ", first_axes._position)
+        print("last_axes ", last_axes._position)
+        # , y=0.92,ha='center', size=22, weight=10)
+        self.figure.suptitle(self.label, ha='center', va='bottom', y=first_axes._position.y0+0.2)
+        # , y=0.06, size=18, ha='center')
+        self.figure.supxlabel("Frequency", ha='center', va='top', y=last_axes._position.y1-0.2)
+        # , x=0.07, size=18, va='center')
+        self.figure.supylabel("Step Count", va='center', ha='center',
+                              x=first_axes._position.x0 - first_axes._position.x0*.02)
+        for i, (key, val) in enumerate(self.data.items()):
+            for j, (k, v) in enumerate(val.items()):
+                # print(f"HistogramMultiAxes : drawing {i}, {j}, {k}")
+                color = colors[int(j % n_colors)]
+                hist, bins, binsize = utils.histogram(v, self.control.value())
+                self.axes[i, j].hist(v, bins=bins, edgecolor='black', linewidth=0.5,
+                                     color=color, label=k, alpha=0.5, orientation='horizontal')
+
+                # space_axes[i, j].invert_yaxis()
+                if j == 0:
+                    self.axes[i, j].set_ylabel(f"Total steps {i+1}")
+                if i == i_max:
+                    self.axes[i, j].set_xlabel(f"step {j+1}")
+        # needed
+        self.canvas.draw()

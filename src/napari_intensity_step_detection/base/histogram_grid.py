@@ -1,4 +1,4 @@
-from napari_intensity_step_detection.base.plots import colors, Histogram
+from napari_intensity_step_detection.base.plots import colors, Histogram, HistogramMultiAxes
 from qtpy.QtWidgets import QWidget, QGridLayout, QScrollArea, QVBoxLayout
 from typing import Optional
 
@@ -23,18 +23,32 @@ class HistogramGrid(QWidget):
     def draw(self) -> None:
         n_colors = len(colors)
         # print(len(self.axes))
+        row_count = 0
         for i, (key, val) in enumerate(self.data.items()):
             row = int(i / self.col)
             col = int(i % self.col)
-            # print("MultiHistogramWidgets draw", row, col)
-            _histogram = Histogram()
-            _histogram.setMinimumWidth(400)
-            _histogram.setMinimumHeight(400)
-            _histogram.setData(val, key)
-            _histogram.setColor(colors[int(i % n_colors)])
-            _histogram.draw()
-            self.centralWidget.layout().addWidget(_histogram, row, col)
-        self.scrollArea.setWidget(self.centralWidget)
+            if key == "tile_histogram":
+                if col > 0:
+                    row_count += 1
+                # print(f"MultiHistogramWidgets draw tile {row_count}")
+                grid_size = len(val)
+                _milti_axes = HistogramMultiAxes(count=grid_size)
+                _milti_axes.setData(data=val, title="Step length")
+                _milti_axes.setMinimumWidth(400*2)
+                _milti_axes.setMinimumHeight(400 * grid_size)
+                _milti_axes.draw()
+                self.centralWidget.layout().addWidget(_milti_axes, row_count, 0, grid_size, self.col)
+            else:
+                # print(f"MultiHistogramWidgets draw {row}, {col}, {key}")
+                _histogram = Histogram()
+                _histogram.setMinimumWidth(400)
+                _histogram.setMinimumHeight(400)
+                _histogram.setData(val, key)
+                _histogram.setColor(colors[int(i % n_colors)])
+                _histogram.draw()
+                self.centralWidget.layout().addWidget(_histogram, row, col)
+            row_count += 1
+            self.scrollArea.setWidget(self.centralWidget)
 
     def setData(self, data):
         self.data = data

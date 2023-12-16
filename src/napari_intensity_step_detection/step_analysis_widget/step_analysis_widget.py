@@ -40,12 +40,22 @@ class ResultWidget(QWidget):
         # step length
         max_step_count = np.max(data_dict['step_count'])
 
+        # for i in range(1, max_step_count+1):
+        #     track_ids = (step_meta[step_meta['step_count'] == i]['track_id']).to_list()
+        #     tracks_group = step_info[step_info['track_id'].isin(track_ids)].groupby('track_id')
+        #     for j in range(0, i):
+        #         jth = tracks_group['dwell_before'].nth(j).to_numpy(dtype=np.float64)
+        #         data_dict[f'step_count_{i}_step_{j+1}_dwell_before'] = jth
+        graph_dict = {}
         for i in range(1, max_step_count+1):
             track_ids = (step_meta[step_meta['step_count'] == i]['track_id']).to_list()
             tracks_group = step_info[step_info['track_id'].isin(track_ids)].groupby('track_id')
+            graph_dict[f'step_count_{i}'] = {}
             for j in range(0, i):
                 jth = tracks_group['dwell_before'].nth(j).to_numpy(dtype=np.float64)
-                data_dict[f'step_count_{i}_step_{j+1}_dwell_before'] = jth
+                graph_dict[f'step_count_{i}'][f'step_{j+1}_length'] = jth
+
+        data_dict['tile_histogram'] = graph_dict
 
         self.histogram.setData(data=data_dict)
         self.btnExport.clicked.connect(self.export)
@@ -61,9 +71,9 @@ class ResultWidget(QWidget):
         print(file_path)
         df = self.data['steps_df']
         df.to_csv(file_path[0])
-        # # temp
-        # meta_path = file_path[0].replace('.csv', '_meta.csv')
-        # self.data['steps_meta_df'].to_csv(meta_path)
+        # temp
+        meta_path = file_path[0].replace('.csv', '_meta.csv')
+        self.data['steps_meta_df'].to_csv(meta_path)
 
 
 class _step_analysis_ui(QWidget):
