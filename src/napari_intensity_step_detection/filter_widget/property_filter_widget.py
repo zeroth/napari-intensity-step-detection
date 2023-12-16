@@ -75,15 +75,10 @@ class FilterWidget(QWidget):
         track_id_index = self.filterView.model().index(current.row(), 0, current.parent())
         track_id = int(self.filterView.model().data(track_id_index, role=Qt.ItemDataRole.DisplayRole))
         print(f"current_proxy_selection_changed emit {track_id}")
+
         self.proxySelectionChanged.emit(track_id)
 
     def add_controls(self, track_meta: pd.DataFrame):
-        # if len(self.property_sliders):
-        #     for k, v in self.property_sliders.items():
-        #         del v
-        #     del self.property_sliders
-        #     self.property_sliders = {}
-
         if not self.filterControls.layout():
             self.filterControls.setLayout(QVBoxLayout())
             self.filterControls.layout().setContentsMargins(0, 0, 0, 0)
@@ -129,7 +124,6 @@ class PropertyFilter(NLayerWidget):
 
         def _call_setup_ui(key, val):
             if key == "tracking_model":
-                print("_call_setup_ui")
                 self.ui.setup_ui()
         self.state.objectAdded.connect(_call_setup_ui)
         self.state.objectUpdated.connect(_call_setup_ui)

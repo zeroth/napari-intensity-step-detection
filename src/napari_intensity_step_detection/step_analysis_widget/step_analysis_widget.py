@@ -175,7 +175,6 @@ class StepAnalysisWidget(NLayerWidget):
                                                  window=window,
                                                  threshold=threshold)
 
-            # all_tracks.loc[all_tracks['track_id'] == track_id, 'fit'] = fitx
             # Detail step table
             steps_df = pd.DataFrame(steptable,
                                     columns=["step_index", "level_before", "level_after",
@@ -223,9 +222,6 @@ class StepAnalysisWidget(NLayerWidget):
         result[result_title] = _result
         self.state.setData("stepanalysis_result", result)
 
-        # steps_info.to_csv('step_info.csv')
-        # step_meta_df.to_csv('step_meta.csv')
-
     def render_plots(self):
         # ['track_id', 'step_count', 'negetive_steps','positive_steps', 'step_height', 'max_intensity']
         result_obj = self.state.data("stepanalysis_result")
@@ -249,7 +245,6 @@ def _qt_main():
     import sys
     app = QApplication(sys.argv)
     widget = QWidget()
-    # widget.setIcon(utils.get_icon('file-export'))
     widget.show()
     sys.exit(app.exec())
 
