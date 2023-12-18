@@ -228,7 +228,7 @@ class HistogramMultiAxes(BaseMPLWidget):
         count: int = 1
     ):
         super().__init__(parent=parent)
-        self.canvas.figure.set_layout_engine(None)
+        self.canvas.figure.set_layout_engine("constrained")
         bb = self.figure.get_tightbbox()
         print("canvas.get_width_height()", self.canvas.get_width_height())
 
@@ -267,18 +267,17 @@ class HistogramMultiAxes(BaseMPLWidget):
         self.clear()
         n_colors = len(colors)
         i_max = len(self.data) - 1
-        bb = self.figure.get_tightbbox()
+
         first_axes = self.axes[0, 0]
-        last_axes = self.axes[i_max, i_max]
-        print("first_axes ", first_axes._position)
-        print("last_axes ", last_axes._position)
-        # , y=0.92,ha='center', size=22, weight=10)
-        self.figure.suptitle(self.label, ha='center', va='bottom', y=first_axes._position.y0+0.2)
-        # , y=0.06, size=18, ha='center')
-        self.figure.supxlabel("Frequency", ha='center', va='top', y=last_axes._position.y1-0.2)
-        # , x=0.07, size=18, va='center')
-        self.figure.supylabel("Step Count", va='center', ha='center',
-                              x=first_axes._position.x0 - first_axes._position.x0*.02)
+        last_axes = self.axes[i_max, 0]
+
+        self.figure.suptitle(self.label)
+        #  , ha='center', va='bottom', y=first_axes._position.y1 + (first_axes._position.y1 * 0.03))
+        self.figure.supylabel("Step Count")
+        #   , va='center', ha='center', x=first_axes._position.x0 - (first_axes._position.x0*0.4))
+        self.figure.supxlabel("Frequency")
+        #  , ha='center', y=last_axes._position.x0 - (last_axes._position.x0*0.4))
+
         for i, (key, val) in enumerate(self.data.items()):
             for j, (k, v) in enumerate(val.items()):
                 # print(f"HistogramMultiAxes : drawing {i}, {j}, {k}")
