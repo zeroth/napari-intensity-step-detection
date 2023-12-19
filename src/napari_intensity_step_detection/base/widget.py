@@ -1,15 +1,19 @@
 from pathlib import Path
 from qtpy import uic
 import napari
-from qtpy.QtWidgets import QWidget, QFormLayout, QComboBox, QLabel
-from napari_intensity_step_detection.base import AppState
+from qtpy.QtWidgets import QWidget, QFormLayout, QComboBox, QLabel, QVBoxLayout
+from qtpy.QtCore import Signal
+from napari.utils.events import Event
 
 
 class NLayerWidget(QWidget):
-    def __init__(self, app_state: AppState = None, parent: QWidget = None):
+    nLayerInserted = Signal(Event)
+    updated = Signal()
+
+    def __init__(self, napari_viewer: napari.viewer.Viewer = None, parent: QWidget = None):
         super().__init__(parent)
         # self.viewer = napari_viewer
-        self.state = app_state
+        self.napari_viewer = napari_viewer
         UI_FILE = Path(__file__).resolve().parent.parent.joinpath(
             'ui', 'base_widget.ui')
         self.load_ui(UI_FILE)
@@ -24,11 +28,15 @@ class NLayerWidget(QWidget):
                              "Label": napari.layers.Labels}
 
         self.layers_hooks = []
-        if self.state:
-            self.state.nLayerInserted.connect(
-                self.viewer_layer_updated)
-            self.state.nLayerRemoved.connect(
-                self.viewer_layer_updated)
+        if self.napari_viewer:
+            def _inserted(event):
+                self.nLayerInserted.emit(event)
+                self.viewer_layer_updated(event)
+            self.napari_viewer.layers.events.inserted.connect(_inserted)
+            self.napari_viewer.layers.events.changed.connect(_inserted)
+            self.napari_viewer.layers.events.removed.connect(_inserted)
+        
+        self.widget.setLayout(QVBoxLayout())
 
     def load_ui(self, path):
         uic.loadUi(path, self)
@@ -37,13 +45,14 @@ class NLayerWidget(QWidget):
         for name, dtype in self.layer_filter.items():
             if isinstance(event.value, dtype):
                 self.update_combo(name, dtype)
+
         for f in self.layers_hooks:
             f(event)
 
     def update_combo(self, name, dtype, is_internal=False):
         combo_box = self.layers_combo_container.get(name, QComboBox())
         combo_box.clear()
-        for i, l in enumerate(self.state.getLayers()):
+        for i, l in enumerate(self.get_layers()):
             if isinstance(l, dtype):
                 combo_box.addItem(l.name, i)
 
@@ -66,10 +75,22 @@ class NLayerWidget(QWidget):
         combo = self.layers_combo_container.get(name, None)
         if combo is None:
             return None
-        return self.state.getLayer(combo.currentText())
+        return self.napari_viewer.layers[combo.currentText()]
 
     def get_layer_name(self, name):
         combo = self.layers_combo_container.get(name, None)
         if combo is None:
             return None
         return combo.currentText()
+
+    def get_layers(self):
+        return self.napari_viewer.layers
+
+    def update(self, data: dict):
+        pass
+
+    def get_data(self) -> dict:
+        pass
+
+    def layout(self):
+        return self.widget.layout()

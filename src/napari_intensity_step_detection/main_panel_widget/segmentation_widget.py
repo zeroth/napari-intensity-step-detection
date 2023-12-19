@@ -1,8 +1,7 @@
 from pathlib import Path
 from qtpy.QtWidgets import QWidget, QVBoxLayout, QLabel, QCheckBox
 from qtpy.QtWidgets import QGridLayout
-from napari_intensity_step_detection.base.widget import NLayerWidget
-from napari_intensity_step_detection.base import AppState
+
 from magicgui.widgets import FileEdit
 from magicgui.types import FileDialogMode
 import warnings
@@ -11,8 +10,8 @@ import apoc
 from napari.utils import progress
 import numpy as np
 from napari.utils import notifications
-from qtpy import uic
 import napari_intensity_step_detection.utils as utils
+
 
 
 class FileEditWidget(QWidget):
@@ -112,9 +111,8 @@ class FeatureSelector(QWidget):
 class _segmentation_ui(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        UI_FILE = Path(__file__).resolve().parent.parent.joinpath(
-            'ui', 'segmentation_widget.ui')
-        self.load_ui(UI_FILE)
+        UI_FILE = Path(__file__).resolve().parent.joinpath('segmentation_widget.ui')
+        utils.load_ui(UI_FILE, self)
         self.numMaxDepthSpinner.setMinimum(2)
         self.numMaxDepthSpinner.setMaximum(10)
         self.numMaxDepthSpinner.setValue(2)
@@ -135,84 +133,19 @@ class _segmentation_ui(QWidget):
         self.minObjSizeSpinner.setMinimum(0)
         self.minObjSizeSpinner.setValue(6)
 
-    def load_ui(self, path):
-        uic.loadUi(path, self)
 
-
-class _walking_average_ui(QWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        UI_FILE = Path(__file__).resolve().parent.parent.joinpath(
-            'ui', 'walking_average.ui')
-        self.load_ui(UI_FILE)
-        self.windowSizeSpinner.setMinimum(1)
-        self.windowSizeSpinner.setValue(4)
-        # Blob_Log
-        self.minSigmaSpinner.setMinimum(1.0)
-        self.minSigmaSpinner.setValue(1.0)
-        self.maxSigmaSpinner.setMinimum(1.0)
-        self.maxSigmaSpinner.setValue(2.0)
-        self.numSigmaSpinner.setMinimum(1)
-        self.numSigmaSpinner.setValue(10)
-        self.thresholdSpinner.setMinimum(0.0)
-        self.thresholdSpinner.setValue(0.1)
-        self.overlapSpinner.setMinimum(0.0)
-        self.overlapSpinner.setValue(0.5)
-
-    def load_ui(self, path):
-        uic.loadUi(path, self)
-
-
-class SegmentationWidget(NLayerWidget):
-    def __init__(self, app_state: AppState = None, parent=None):
-        super().__init__(app_state=app_state, parent=parent)
+class Segmentation(QWidget):
+    def __init__(self, base, parent=None):
+        super().__init__(parent=parent)
+        self.base = base
         self.name = "Segmentation"
         self.classifier_class = PixelClassifier
         self.current_annotation = None
+        self.setLayout(QVBoxLayout())
         self.ui = _segmentation_ui(self)
-        self.avg_ui = _walking_average_ui(self)
-        self.layout().addWidget(self.avg_ui)
         self.layout().addWidget(self.ui)
-        # self.layout().setContentsMargins(0, 0, 0, 0)
-
-        # walking average button
-        def roalling_average_clicked(*arg, **kwargs):
-            if self.get_current_image() is None:
-                warnings.warn("Please select image!")
-                notifications.show_warning(
-                    "Please select image!")
-                return
-
-            self.walking_average(
-                self.get_current_image(),
-                self.avg_ui.windowSizeSpinner.value()
-            )
-
-        self.avg_ui.btnAvg.clicked.connect(roalling_average_clicked)
-
-        # quick segment button
-        def quick_segment_clicked(*arg, **kwargs):
-            if self.get_current_image() is None:
-                warnings.warn("Please select image!")
-                notifications.show_warning(
-                    "Please select image!")
-                return
-
-            label_layer = self.get_current_label()
-            self.quick_segment_2d(
-                image_layer=self.get_current_image(),
-                label_layer=label_layer,
-                min_sigma=self.avg_ui.minSigmaSpinner.value(),
-                max_sigma=self.avg_ui.maxSigmaSpinner.value(),
-                num_sigma=self.avg_ui.numSigmaSpinner.value(),
-                threshold=self.avg_ui.thresholdSpinner.value(),
-                overlap=self.avg_ui.overlapSpinner.value()
-            )
-
-        self.avg_ui.btnLog.clicked.connect(quick_segment_clicked)
-
+        
         # Train button
-
         def train_clicked(*arg, **kwargs):
             if self.get_current_label() is None:
                 warnings.warn("No ground truth annotation selected!")
@@ -241,8 +174,8 @@ class SegmentationWidget(NLayerWidget):
                 first_image_layer.scale,
                 self.ui.minObjSizeSpinner.value() if self.ui.chkRemoveSmallObj.isChecked() else None
             )
-            self.state.setParameter(f"{self.name}_classifier_file",
-                                    str(self.ui.filenameEdit.value()).replace("\\", "/").replace("//", "/"))
+            # self.state.setParameter(f"{self.name}_classifier_file",
+            #                         str(self.ui.filenameEdit.value()).replace("\\", "/").replace("//", "/"))
 
         self.ui.btnTrain.clicked.connect(train_clicked)
 
@@ -262,13 +195,13 @@ class SegmentationWidget(NLayerWidget):
         self.ui.btnSegment.clicked.connect(predict_clicked)
 
     def get_current_image(self):
-        return self.get_layer("Image")
+        return self.base.get_layer("Image")
 
     def get_current_image_data(self):
         return None if self.get_current_image() is None else self.get_current_image().data
 
     def get_current_label(self):
-        return self.get_layer('Label')
+        return self.base.get_layer('Label')
 
     def get_current_label_data(self):
         return None if self.get_current_label() is None else self.get_current_label().data
@@ -338,11 +271,11 @@ class SegmentationWidget(NLayerWidget):
 
         clf = self.classifier_class(opencl_filename=filename)
         result = np.zeros(images.shape, dtype=np.uint16)
-        
+
         min_obj_size_gradiant = np.ceil(
             np.linspace(min_obj_size, 1, images.shape[0])).astype(
             np.uint16) if min_obj_size is not None else None
-        
+
         if len(images.shape) >= 3:
             for i in progress(range(images.shape[0]), desc="Predicting..."):
                 result[i] = np.asarray(
@@ -367,53 +300,4 @@ class SegmentationWidget(NLayerWidget):
 
         short_filename = filename.split("/")[-1]
 
-        _add_to_viewer(self.state.viewer, False, "Result of " +
-                       short_filename, result, scale)
-
-    def walking_average(self, image_layer, window: int = 4):
-        image = image_layer.data
-        ret = np.cumsum(image, axis=0, dtype=image.dtype)
-        ret[window:] = ret[window:] - ret[:-window]
-        ret = ret[window - 1:] / window
-        _add_to_viewer(self.state.viewer, True, f"{image_layer.name}_Walking_Avg_{window}", ret, image_layer.scale)
-
-    def quick_segment_2d(self, image_layer, label_layer, min_sigma: float = 1.0, max_sigma: float = 2.0,
-                         num_sigma: int = 10, threshold: float = 0.1, overlap: float = 0.5):
-        from skimage.feature import blob_log
-        from skimage.exposure import rescale_intensity
-
-        if self.state.viewer.dims.ndisplay != 2:
-            warnings.warn("Plese sqitch to 2d Display Mode!")
-            notifications.show_warning(
-                "Plese sqitch to 2d Display Mode!")
-            return
-        image = image_layer.data[self.state.viewer.dims.current_step[0]]
-        if label_layer is not None:
-            label = label_layer.data[self.state.viewer.dims.current_step[0]]
-        else:
-            label_layer = self.state.viewer.add_labels(
-                np.zeros(image_layer.data.shape, dtype=np.uint8),
-                name="Annotation_Label")
-            label = label_layer.data[self.state.viewer.dims.current_step[0]]
-
-        im_range = np.min(image), np.max(image)
-        image = rescale_intensity(image, in_range=im_range, out_range=(0, 1))
-        blobs_log = blob_log(image, min_sigma=min_sigma, max_sigma=max_sigma,
-                             num_sigma=num_sigma, threshold=threshold, overlap=overlap)
-        print(blobs_log)
-        print(f"Current pointer : {self.state.viewer.dims.current_step[0]}")
-        label = utils.draw_points(label, blobs_log, fill_value=2, outline_value=1)
-        # self.state.viewer.layers['Annotation_Label'].data[self.state.viewer.dims.current_step[0]] = label
-        label_layer.data[self.state.viewer.dims.current_step[0]] = label
-        self.state.viewer.reset_view()
-
-
-def _add_to_viewer(viewer, as_image, name, data, scale=None):
-    try:
-        viewer.layers[name].data = data.astype(int)
-        viewer.layers[name].visible = True
-    except KeyError:
-        if as_image:
-            viewer.add_image(data, name=name, scale=scale)
-        else:
-            viewer.add_labels(data.astype(int), name=name, scale=scale)
+        utils.add_to_viewer(self.base.napari_viewer, "Result of " + short_filename, result, "labels", scale=scale)

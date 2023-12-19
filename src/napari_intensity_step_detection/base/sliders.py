@@ -1,8 +1,10 @@
 from qtpy import uic
 from pathlib import Path
-from qtpy.QtWidgets import QWidget, QHBoxLayout
+from qtpy.QtWidgets import QWidget, QHBoxLayout, QLineEdit
 from qtpy.QtCore import Signal
 from qtpy.QtGui import QIntValidator
+from superqt import QRangeSlider
+from qtpy.QtCore import Qt
 
 
 class _h_slider_ui(QWidget):
@@ -10,9 +12,14 @@ class _h_slider_ui(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        UI_FILE = Path(__file__).resolve().parent.parent.joinpath(
-            'ui', 'h_range_slider.ui')
-        self.load_ui(UI_FILE)
+        self.setLayout(QHBoxLayout())
+        self.hSlider = QRangeSlider(Qt.Horizontal)
+        self.leMin = QLineEdit()
+        self.leMax = QLineEdit()
+        self.layout().addWidget(self.leMin)
+        self.layout().addWidget(self.hSlider)
+        self.layout().addWidget(self.leMax)
+
         self.leMin.setStyleSheet("background:transparent; border: 0;")
         self.leMax.setStyleSheet("background:transparent; border: 0;")
 
