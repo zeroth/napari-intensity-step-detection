@@ -5,6 +5,7 @@ from skimage import measure
 from tqdm import tqdm
 import napari
 import warnings
+from scipy.optimize import curve_fit
 
 
 class TrackLabels:
@@ -125,3 +126,56 @@ def pd_to_napari_tracks(df: pd.DataFrame, track_header, track_meta_header):
     tracks = df[track_header].to_numpy()
 
     return tracks, properties, track_meta
+
+# msd related functions
+
+
+def msd_fit_function(delta, d, alfa):
+    return (4*d) * np.power(delta, alfa)
+
+
+def msd_fit_velocity_function(delta, d, alfa, v):
+    return (4*d) * np.power(delta, alfa) + (np.power(v, 2) * np.power(delta, 2))
+
+
+def vector_distance(a, b):
+    return np.sqrt(np.sum((np.array(a) - np.array(b)) ** 2))
+
+
+def msd(track, limit=26, diff=vector_distance):
+    # 26 ~= 100 sec (3.8)
+    _track = track
+    if limit:
+        _track = _track[0:limit]
+    tau = 1
+    _mean = []
+    while tau < len(_track):
+        msd_t = 0
+        r = len(_track) - tau
+        for i in range(r):
+            msd_t += np.square(diff(_track[i + tau], _track[i])).item()
+        _mean.append(msd_t / float(len(_track) - tau))
+        tau += 1
+    return _mean
+
+
+def basic_fit(msd_y, limit=26, diff=vector_distance):
+    y = np.array(msd_y)
+    x = np.array(list(range(1, len(y) + 1))) * 3.8
+
+    init = np.array([.001, .01])
+    best_value, _ = curve_fit(msd_fit_function, x, y, p0=init, maxfev=10000)
+    _y = msd_fit_function(x, best_value[0], best_value[1])
+
+    return best_value[1], _y
+
+
+def velocity_fit(track, limit=26, diff=vector_distance):
+    y = np.array(msd(track, limit=limit, diff=diff))
+    x = np.array(list(range(1, len(y) + 1))) * 3.8
+
+    init = np.array([.001, .01, .01])
+    best_value, _ = curve_fit(msd_fit_velocity_function, x, y, p0=init, maxfev=1000000)
+    _y = msd_fit_velocity_function(x, best_value[0], best_value[1], best_value[2])
+
+    return best_value[1], best_value[2], _y

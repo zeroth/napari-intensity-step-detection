@@ -2,6 +2,7 @@ from qtpy.QtWidgets import QVBoxLayout, QWidget, QTabWidget, QToolButton, QStyle
 from qtpy.QtCore import Qt
 from qtpy.QtGui import QPixmap, QIcon
 from napari_intensity_step_detection.main_panel_widget import MainPanel
+from napari_intensity_step_detection.track_analysis_widget import TrackAnalysis
 from pathlib import Path
 
 
@@ -16,6 +17,9 @@ class PluginWidget(QWidget):
 
         self.segmentation_widget = MainPanel(napari_viewer=napari_viewer)
         self.tabs.addTab(self.segmentation_widget, "Main")
+
+        self.tracking_analysis_widget = TrackAnalysis(napari_viewer=napari_viewer)
+        self.tabs.addTab(self.tracking_analysis_widget, "Track Analysis")
 
         # setup the top left Action Menu
         self.btn_save = QToolButton()

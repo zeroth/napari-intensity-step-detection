@@ -1,10 +1,10 @@
 from qtpy import uic
 from pathlib import Path
-from qtpy.QtWidgets import QWidget, QHBoxLayout, QLineEdit
+from qtpy.QtWidgets import QWidget, QHBoxLayout, QLineEdit, QGroupBox, QVBoxLayout, QSizePolicy
 from qtpy.QtCore import Signal
 from qtpy.QtGui import QIntValidator
 from superqt import QRangeSlider
-from qtpy.QtCore import Qt
+from qtpy.QtCore import Qt, QSize, QTimer
 
 
 class _h_slider_ui(QWidget):
@@ -12,13 +12,51 @@ class _h_slider_ui(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setLayout(QHBoxLayout())
+        sizePolicy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.MinimumExpanding)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(parent.sizePolicy().hasHeightForWidth())
+        parent.setSizePolicy(sizePolicy)
+
+        # self.horizontalLayout_3 = QHBoxLayout()
+        # self.horizontalLayout_3.setContentsMargins(0, 0, 0, 0)
+        # self.horizontalLayout_3.setSpacing(2)
+        # self.horizontalLayout_3.setObjectName("horizontalLayout_3")
+
+        self.setLayout(QVBoxLayout())
+        self.group = QGroupBox()
+        self.layout().addWidget(self.group)
+        self.layout().setContentsMargins(0, 0, 0, 0)
+        self.layout().setSpacing(2)
+
+        self.group_layout = QHBoxLayout()
         self.hSlider = QRangeSlider(Qt.Horizontal)
         self.leMin = QLineEdit()
+        lmsizePolicy = QSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        lmsizePolicy.setHorizontalStretch(0)
+        lmsizePolicy.setVerticalStretch(0)
+        lmsizePolicy.setHeightForWidth(self.leMin.sizePolicy().hasHeightForWidth())
+        self.leMin.setSizePolicy(lmsizePolicy)
+        self.leMin.setMaximumSize(QSize(30, 16777215))
+        self.leMin.setFocusPolicy(Qt.ClickFocus)
+        self.leMin.setFrame(False)
+
         self.leMax = QLineEdit()
-        self.layout().addWidget(self.leMin)
-        self.layout().addWidget(self.hSlider)
-        self.layout().addWidget(self.leMax)
+        lemsizePolicy = QSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        lemsizePolicy.setHorizontalStretch(0)
+        lemsizePolicy.setVerticalStretch(0)
+        lemsizePolicy.setHeightForWidth(self.leMax.sizePolicy().hasHeightForWidth())
+        self.leMax.setSizePolicy(lemsizePolicy)
+        self.leMax.setMaximumSize(QSize(30, 16777215))
+        self.leMax.setFocusPolicy(Qt.ClickFocus)
+        self.leMax.setFrame(False)
+
+        self.group_layout.addWidget(self.leMin)
+        self.group_layout.addWidget(self.hSlider)
+        self.group_layout.addWidget(self.leMax)
+        self.group.setLayout(self.group_layout)
+        self.group_layout.setContentsMargins(0, 0, 0, 0)
+        self.group_layout.setSpacing(2)
 
         self.leMin.setStyleSheet("background:transparent; border: 0;")
         self.leMax.setStyleSheet("background:transparent; border: 0;")
@@ -62,11 +100,6 @@ class _h_slider_ui(QWidget):
         vmin, vmax = self.hSlider.value()
         rmin, _ = self.hSlider.minimum(), self.hSlider.maximum()
         val = int(text) if text else rmin
-
-        if val >= vmax:
-            val = vmax - 1
-        if val < rmin:
-            val = rmin
         self.setValue((val, vmax))
 
     def _update_max(self):
@@ -74,11 +107,6 @@ class _h_slider_ui(QWidget):
         vmin, vmax = self.hSlider.value()
         _, rmax = self.hSlider.minimum(), self.hSlider.maximum()
         val = int(text) if text else rmax
-
-        if val <= vmin:
-            val = vmin + 1
-        if val > rmax:
-            val = rmax
         self.setValue((vmin, val))
 
     def setTracking(self, state: bool):
@@ -127,12 +155,9 @@ class HFilterSlider(HRangeSlider):
 
     def __init__(self, title: str = 'untitled', parent: QWidget = None) -> None:
         super().__init__(parent)
-        self.title = title
         self.valueChanged.connect(self.valueUpdated)
-
-    def setTitle(self, title):
         self.title = title
-        return super().setTitle(f"Filter - {title}")
+        self.setTitle(f"Filter: {title}")
 
     def valueUpdated(self, vrange):
         self.valueChangedTitled.emit(self.title, vrange)

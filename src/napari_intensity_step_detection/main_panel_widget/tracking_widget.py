@@ -4,6 +4,35 @@ from qtpy.QtWidgets import QWidget, QVBoxLayout
 from napari_intensity_step_detection.base.plots import Histogram
 from napari_intensity_step_detection import utils
 from napari_intensity_step_detection.utils import TrackLabels as Labels
+from napari_intensity_step_detection.base.sliders import HFilterSlider
+from qtpy.QtCore import Signal
+from napari.utils import notifications
+import warnings
+
+
+class TrackFilterControls(QWidget):
+    propertyUpdated = Signal(str, tuple)
+
+    def __init__(self, parent: QWidget = None):
+        super().__init__(parent)
+        self.setLayout(QVBoxLayout())
+
+    def set_properties(self, dataframe):
+        self.database = dataframe
+        self.properties = dataframe.columns
+        self.create_controls()
+
+    def create_controls(self):
+        self.controls = {}
+        for property in self.properties:
+            property = str(property).strip()
+            if property == 'track_id':
+                continue
+            self.controls[property] = HFilterSlider(property)
+            self.controls[property].setRange((self.database[property].min(), self.database[property].max()))
+            self.controls[property].setValue((self.database[property].min(), self.database[property].max()))
+            self.layout().addWidget(self.controls[property])
+            self.controls[property].valueChangedTitled.connect(self.propertyUpdated)
 
 
 class TrackFilter(QWidget):
@@ -47,10 +76,44 @@ class Tracking(QWidget):
         self.filterView.setLayout(QVBoxLayout())
         self.filterView.layout().addWidget(self.trackFilter)
 
+        # setup tracking controls
+        self.controls = TrackFilterControls()
+        self.filterView.layout().addWidget(self.controls)
+
         def _start_tracking():
+            if (not self.base.get_layer('Image')) and (not self.base.get_layer('Label')):
+                warnings.warn("No Image or Lable selected!")
+                notifications.show_warning("No Image or Lable selected!")
+                return
             self.track()
 
         self.btnTrack.clicked.connect(_start_tracking)
+
+    def filter_tracks(self, property, vrange):
+        current_track_layer = self.base.get_layer('Track')
+        if current_track_layer is None:
+            warnings.warn("No Track selected!")
+            notifications.show_warning("No Track selected!")
+            return
+        track_meta = current_track_layer.metadata['all_meta']
+
+        track_meta_filtered = track_meta[track_meta[property].between(vrange[0], vrange[1])]
+        track_ids = track_meta_filtered['track_id'].to_numpy()
+        all_tracks = current_track_layer.metadata['all_tracks']
+        filtered_tracks_df = all_tracks[all_tracks['track_id'].isin(track_ids)]
+
+        filtered_tracks, properties, _ = utils.pd_to_napari_tracks(filtered_tracks_df,
+                                                                   Labels.track_header,
+                                                                   Labels.track_meta_header)
+
+        utils.add_to_viewer(self.base.napari_viewer, current_track_layer.name, filtered_tracks, "tracks",
+                            properties=properties, scale=current_track_layer.scale,
+                            metadata={'all_meta': track_meta,
+                                      'all_tracks': all_tracks,
+                                      "filter_meta": track_meta_filtered,
+                                      "filter_tracks": filtered_tracks_df,
+                                      'tracking_params': current_track_layer.metadata['tracking_params']})
+        self.trackFilter.set_data_source(track_meta_filtered)
 
     def track(self):
         image_layer = self.base.get_layer('Image')
@@ -65,8 +128,7 @@ class Tracking(QWidget):
 
         pbr.update(10)
 
-        tracked_df = utils.get_tracks(
-            main_pd_frame, search_range=search_range, memory=memory)
+        tracked_df = utils.get_tracks(main_pd_frame, search_range=search_range, memory=memory)
         # column name change from particle to track_id
         tracked_df.rename(columns={'particle': 'track_id'}, inplace=True)
 
@@ -96,3 +158,5 @@ class Tracking(QWidget):
 
         # update filter view
         self.trackFilter.set_data_source(track_meta)
+        self.controls.set_properties(track_meta)
+        self.controls.propertyUpdated.connect(self.filter_tracks)

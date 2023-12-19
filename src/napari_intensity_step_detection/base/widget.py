@@ -30,8 +30,8 @@ class NLayerWidget(QWidget):
         self.layers_hooks = []
         if self.napari_viewer:
             def _inserted(event):
-                self.nLayerInserted.emit(event)
                 self.viewer_layer_updated(event)
+                self.nLayerInserted.emit(event)
             self.napari_viewer.layers.events.inserted.connect(_inserted)
             self.napari_viewer.layers.events.changed.connect(_inserted)
             self.napari_viewer.layers.events.removed.connect(_inserted)

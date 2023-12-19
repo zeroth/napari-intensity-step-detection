@@ -2,6 +2,10 @@ def add_to_viewer(viewer, name, data, type, **kwargs):
     try:
         viewer.layers[name].data = data
         viewer.layers[name].visible = True
+        viewer.layers[name].scale = kwargs.get("scale", (1, 1, 1))
+        if type == "tracks":
+            viewer.layers[name].properties = kwargs.get("properties", None)
+            viewer.layers[name].metadata = kwargs.get("metadata", None)
     except KeyError:
         if type == "image":
             viewer.add_image(data, name=name, **kwargs)

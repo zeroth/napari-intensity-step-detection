@@ -1,5 +1,5 @@
 import napari
-from qtpy.QtWidgets import QWidget, QVBoxLayout, QToolBox, QTabWidget
+from qtpy.QtWidgets import QWidget, QVBoxLayout, QTabWidget
 from napari_intensity_step_detection.base.widget import NLayerWidget
 import napari_intensity_step_detection.utils as utils
 from pathlib import Path

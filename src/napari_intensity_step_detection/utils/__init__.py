@@ -4,7 +4,7 @@ from .plot_utils import histogram
 from .setmentation_utils import draw_points, remove_small_objects, quick_log
 from .step_detection import FindSteps
 from .track_utils import TrackLabels, get_frame_position_properties, get_statck_properties, get_tracks, \
-    pd_to_napari_tracks, napari_track_to_pd
+    pd_to_napari_tracks, napari_track_to_pd, msd, msd_fit_function, msd_fit_velocity_function, basic_fit
 from .ui_utils import get_icon, load_ui
 
 __all__ = [
@@ -22,5 +22,9 @@ __all__ = [
     "quick_log",
     "load_ui",
     "pd_to_napari_tracks",
-    "napari_track_to_pd"
+    "napari_track_to_pd",
+    "msd",
+    "msd_fit_function",
+    "msd_fit_velocity_function",
+    "basic_fit"
 ]

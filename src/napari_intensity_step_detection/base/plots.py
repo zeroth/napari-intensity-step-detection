@@ -180,14 +180,15 @@ class Histogram(BaseMPLWidget):
                 _size.append(len(v))
             return np.max(_size)
 
-    def setData(self, data, title):
+    def setData(self, data, title, label=None):
         if isinstance(data, dict):
             self.data = data
         else:
             self.data = np.array(data).ravel()
             self.control.setValue(5 if len(data) > 5 else 2)
 
-        self.label = title
+        self.label = title if label is None else label
+        self.title = title
         self.control.editingFinished.connect(self.draw)
 
     def setColor(self, color):
@@ -213,7 +214,7 @@ class Histogram(BaseMPLWidget):
                 # self.control.setValue(binsize)
                 self.axes.hist(self.data, bins=bins, edgecolor='black',
                                linewidth=0.5, color=self.color, label=self.label)
-                self.axes.set_title(label=self.label)
+                self.axes.set_title(label=self.title)
                 self.axes.legend(loc='upper right')
 
         # needed
