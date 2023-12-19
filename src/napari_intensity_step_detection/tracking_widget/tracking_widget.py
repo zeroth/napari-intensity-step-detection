@@ -1,6 +1,6 @@
 from pathlib import Path
 from napari.utils import progress
-from qtpy.QtWidgets import QWidget, QVBoxLayout
+from qtpy.QtWidgets import QWidget, QVBoxLayout, QTabWidget
 from qtpy.QtCore import QItemSelectionModel
 from napari_intensity_step_detection.base import NLayerWidget, AppState
 from napari_intensity_step_detection.tracking_widget.track_models import TrackMetaModel, TrackMetaModelProxy
@@ -8,6 +8,59 @@ from napari_intensity_step_detection.filter_widget.property_filter_widget import
 from qtpy import uic
 from napari_intensity_step_detection import utils
 from napari_intensity_step_detection.utils import TrackLabels as Labels
+import napari
+import numpy as np
+import pandas as pd
+
+
+class ResultWidget(QWidget):
+    def __init__(self, data, parent=None):
+        super().__init__(parent)
+        UI_FILE = Path(__file__).resolve().parent.parent.joinpath(
+            'ui', 'step_analysis_result_widget.ui')
+        self.load_ui(UI_FILE)
+        self.btnExport.setIcon(utils.get_icon('file-export'))
+        self.data = data
+        self.setup_ui()
+
+    def load_ui(self, path):
+        uic.loadUi(path, self)
+
+    def setup_ui(self):
+        step_meta: pd.DataFrame = self.data['steps_meta_df']
+        step_info: pd.DataFrame = self.data['steps_df']
+        data_dict = {}
+        data_dict['step_count'] = step_meta['step_count'].to_numpy()
+        data_dict['negetive_vs_positive'] = np.hstack([step_meta['negetive_steps'].to_numpy(),
+                                                       step_meta['positive_steps'].to_numpy()])
+        data_dict['single_step_height'] = np.abs(
+            (step_meta[step_meta['step_count'] == 1]['step_height']).to_numpy())
+        data_dict['max_intensity'] = step_meta['max_intensity'].to_numpy()
+        data_dict['step_height'] = np.abs((self.data['steps_df']['step_height']).to_numpy())
+        data_dict['track_length'] = step_meta['length'].to_numpy()
+
+        # step length
+        max_step_count = np.max(data_dict['step_count'])
+
+        # for i in range(1, max_step_count+1):
+        #     track_ids = (step_meta[step_meta['step_count'] == i]['track_id']).to_list()
+        #     tracks_group = step_info[step_info['track_id'].isin(track_ids)].groupby('track_id')
+        #     for j in range(0, i):
+        #         jth = tracks_group['dwell_before'].nth(j).to_numpy(dtype=np.float64)
+        #         data_dict[f'step_count_{i}_step_{j+1}_dwell_before'] = jth
+        graph_dict = {}
+        for i in range(1, max_step_count+1):
+            track_ids = (step_meta[step_meta['step_count'] == i]['track_id']).to_list()
+            tracks_group = step_info[step_info['track_id'].isin(track_ids)].groupby('track_id')
+            graph_dict[f'step_count_{i}'] = {}
+            for j in range(0, i):
+                jth = tracks_group['dwell_before'].nth(j).to_numpy(dtype=np.float64)
+                graph_dict[f'step_count_{i}'][f'step_{j+1}_length'] = jth
+
+        data_dict['tile_histogram'] = graph_dict
+
+        self.histogram.setData(data=data_dict)
+        self.btnExport.clicked.connect(self.export)
 
 
 class _tracking_ui(QWidget):
@@ -25,57 +78,20 @@ class _tracking_ui(QWidget):
 
 class TrackingWidget(NLayerWidget):
 
-    def __init__(self, app_state: AppState = None, parent: QWidget = None):
-        super().__init__(app_state, parent)
+    def __init__(self, napari_viewer: napari.viewer.Viewer = None, parent: QWidget = None):
+        super().__init__(napari_viewer=napari_viewer, parent=parent)
         self.name = "tracking"
         # tracking controls
         self.filter_propery = 'length'
+        self.tabWidget = QTabWidget(self)
         self.ui = _tracking_ui(self)
-        self.layout().addWidget(self.ui)
+        self.tabWidget.addTab(self.ui, "Tracking")
+        self.layout().addWidget(self.tabWidget)
+
+        self.layer_filter["Tracks"] = napari.layers.Tracks
+
         self.ui.filterView.setLayout(QVBoxLayout())
-
-        def _start_tracking():
-            self.track()
-
-        self.ui.btnTrack.clicked.connect(_start_tracking)
-
-        # def _track_layer_added(event):
-        #     if isinstance(event.value, napari.layers.Tracks):
-        #         if hasattr(event.value, 'metadata') and ('all_meta' in event.value.metadata):
-        #             # self.setup_tracking(event.value)
-        #             layer = event.value
-        #             track_meta = layer.metadata['all_meta']
-        #             tracked_df = layer.metadata['all_tracks']
-        #             self.setup_tracking_state(tracked_df=tracked_df, track_meta=track_meta)
-
-        # self.state.nLayerInserted.connect(_track_layer_added)
-        def _track_data_added(key, val):
-            if key == "tracking":
-                # if not hasattr(self, "propertyFilter"):
-                #     self.propertyFilter = FilterWidget(app_state=self.state,
-                #                                        include_properties=['length'], parent=self)
-                #     self.propertyFilter.tabWidget.setVisible(False)
-
-                #     def _call_setup_ui(key, val):
-                #         if key == "tracking_model":
-                #             print("_call_setup_ui")
-                #             self.propertyFilter.setup_ui()
-                #     self.state.objectAdded.connect(_call_setup_ui)
-                #     self.state.objectUpdated.connect(_call_setup_ui)
-
-                #     self.ui.filterView.layout().addWidget(self.propertyFilter)
-                #     self.ui.filterView.layout().setContentsMargins(0, 0, 0, 0)
-                tracking_df = val["value"]
-                self.setup_tracking_state(tracked_df=tracking_df['tracks_df'], track_meta=tracking_df["meta_df"])
-        self.state.dataAdded.connect(_track_data_added)
-
-        def _state_data_updated(key, val):
-            if key == "tracking":
-                dfs = self.state.data("tracking")
-                all_meta = dfs['meta_df']
-                self.setup_models(all_meta)
-
-        self.state.dataUpdated.connect(_state_data_updated)
+        self.ui.btnTrack.clicked.connect(self.track)
 
     def setup_tracking_state(self, tracked_df, track_meta):
         print("setup_tracking_state")
@@ -118,7 +134,7 @@ class TrackingWidget(NLayerWidget):
                                                                    Labels.track_header,
                                                                    Labels.track_meta_header)
         # self.setup_tracking_state(tracked_df=tracked_df, track_meta=track_meta)
-        self.state.setData(f"{self.name}", {"tracks_df": tracked_df, "meta_df": track_meta})
+        # self.state.setData(f"{self.name}", {"tracks_df": tracked_df, "meta_df": track_meta})
 
         pbr.update(100)
         pbr.close()
@@ -131,6 +147,12 @@ class TrackingWidget(NLayerWidget):
                                                 "memory": memory
                                             }
                                             })
+
+    def update(self, data: dict):
+        pass
+
+    def get_data(self) -> dict:
+        pass
 
 
 # Comman functions

@@ -17,24 +17,24 @@ class PluginWidget(QWidget):
     def __init__(self, napari_viewer):
         super().__init__()
         self.viewer = napari_viewer
-        self.app_state = AppState(napari_viewer=napari_viewer)
+        # self.app_state = AppState(napari_viewer=napari_viewer)
         self.setLayout(QVBoxLayout())
         self.tabs = QTabWidget()
         self.layout().addWidget(self.tabs)
 
-        self.segmentation_widget = SegmentationWidget(app_state=self.app_state)
+        self.segmentation_widget = SegmentationWidget(napari_viewer=napari_viewer)
         self.tabs.addTab(self.segmentation_widget, "Segmentation")
 
-        self.tracking_widget = TrackingWidget(app_state=self.app_state)
-        self.property_filter_widget = PropertyFilter(app_state=self.app_state)
-        self.stepanalysis_widget = StepAnalysisWidget(app_state=self.app_state)
+        self.tracking_widget = TrackingWidget(napari_viewer=napari_viewer)
+        # self.property_filter_widget = PropertyFilter(app_state=self.app_state)
+        # self.stepanalysis_widget = StepAnalysisWidget(app_state=self.app_state)
         self.tabs.addTab(self.tracking_widget, "Tracking")
-        self.tabs.addTab(self.property_filter_widget, "Properties Filter")
-        self.tabs.addTab(self.stepanalysis_widget, "Step Analysis")
+        # self.tabs.addTab(self.property_filter_widget, "Properties Filter")
+        # self.tabs.addTab(self.stepanalysis_widget, "Step Analysis")
 
         # self.tabs.setTabVisible(1, False)
-        self.tabs.setTabVisible(2, False)
-        self.tabs.setTabVisible(3, False)
+        # self.tabs.setTabVisible(2, False)
+        # self.tabs.setTabVisible(3, False)
 
         # def _track_layer_added(event):
         #     if isinstance(event.value, napari.layers.Tracks):
@@ -42,10 +42,10 @@ class PluginWidget(QWidget):
         #             self._track_added()
 
         # self.app_state.nLayerInserted.connect(_track_layer_added)
-        def _track_data_added(key, val):
-            if key == "tracking":
-                self._track_added()
-        self.app_state.dataAdded.connect(_track_data_added)
+        # def _track_data_added(key, val):
+        #     if key == "tracking":
+        #         self._track_added()
+        # self.app_state.dataAdded.connect(_track_data_added)
 
         # setup the top left Action Menu
         self.btn_save = QToolButton()
@@ -75,7 +75,8 @@ class PluginWidget(QWidget):
                                                     filter="*.tracks")
             if len(file_path[0]):
                 print(file_path)
-                self.app_state.open(file_path[0])
+                # self.app_state.open(file_path[0])
+                # TODO: open the project
         self.btn_open.clicked.connect(_open_clicked)
         # self.btn_open.clicked.connect(self.app_state.open)
 
@@ -88,17 +89,17 @@ class PluginWidget(QWidget):
         corner_widget.layout().addWidget(self.btn_open)
         corner_widget.setMinimumWidth(41)
         corner_widget.setMinimumHeight(21)
+        self.tabs.setCornerWidget(corner_widget, Qt.Corner.TopLeftCorner)
 
         # right corner
-        self.btn_oriantation = QToolButton()
-        self.btn_oriantation.setIcon(utils.get_icon('rotate'))
-        self.btn_oriantation.clicked.connect(self.app_state.toggleOriantation)
+        # self.btn_oriantation = QToolButton()
+        # self.btn_oriantation.setIcon(utils.get_icon('rotate'))
+        # self.btn_oriantation.clicked.connect(self.app_state.toggleOriantation)
 
-        self.tabs.setCornerWidget(corner_widget, Qt.Corner.TopLeftCorner)
-        self.tabs.setCornerWidget(self.btn_oriantation, Qt.Corner.TopRightCorner)
+        # self.tabs.setCornerWidget(self.btn_oriantation, Qt.Corner.TopRightCorner)
 
         # Test
-        self.app_state.toggleOriantation.connect(lambda: print("Toggled clicked"))
+        # self.app_state.toggleOriantation.connect(lambda: print("Toggled clicked"))
 
     def _track_added(self):
         # self.tabs.setTabVisible(1, True)

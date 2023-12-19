@@ -13,6 +13,7 @@ import numpy as np
 from napari.utils import notifications
 from qtpy import uic
 import napari_intensity_step_detection.utils as utils
+import napari
 
 
 class FileEditWidget(QWidget):
@@ -164,8 +165,8 @@ class _walking_average_ui(QWidget):
 
 
 class SegmentationWidget(NLayerWidget):
-    def __init__(self, app_state: AppState = None, parent=None):
-        super().__init__(app_state=app_state, parent=parent)
+    def __init__(self, napari_viewer: napari.viewer.Viewer = None, parent=None):
+        super().__init__(napari_viewer=napari_viewer, parent=parent)
         self.name = "Segmentation"
         self.classifier_class = PixelClassifier
         self.current_annotation = None
@@ -338,11 +339,11 @@ class SegmentationWidget(NLayerWidget):
 
         clf = self.classifier_class(opencl_filename=filename)
         result = np.zeros(images.shape, dtype=np.uint16)
-        
+
         min_obj_size_gradiant = np.ceil(
             np.linspace(min_obj_size, 1, images.shape[0])).astype(
             np.uint16) if min_obj_size is not None else None
-        
+
         if len(images.shape) >= 3:
             for i in progress(range(images.shape[0]), desc="Predicting..."):
                 result[i] = np.asarray(
@@ -406,6 +407,12 @@ class SegmentationWidget(NLayerWidget):
         # self.state.viewer.layers['Annotation_Label'].data[self.state.viewer.dims.current_step[0]] = label
         label_layer.data[self.state.viewer.dims.current_step[0]] = label
         self.state.viewer.reset_view()
+
+    def update(self, data: dict):
+        pass
+
+    def get_data(self) -> dict:
+        return None
 
 
 def _add_to_viewer(viewer, as_image, name, data, scale=None):
