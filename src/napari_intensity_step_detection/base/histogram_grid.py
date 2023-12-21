@@ -48,7 +48,7 @@ class HistogramGrid(QWidget):
                 _histogram.draw()
                 self.centralWidget.layout().addWidget(_histogram, row, col)
             row_count += 1
-            self.scrollArea.setWidget(self.centralWidget)
+        self.scrollArea.setWidget(self.centralWidget)
 
     def setData(self, data):
         self.data = data
