@@ -219,7 +219,12 @@ class Histogram(BaseMPLWidget):
 
         # needed
         self.canvas.draw()
-
+    
+    def setXAxisLabel(self, label):
+        self.axes.set_xlabel(label)
+    
+    def setYAxisLabel(self, label):
+        self.axes.set_ylabel(label)
 
 class HistogramMultiAxes(BaseMPLWidget):
 

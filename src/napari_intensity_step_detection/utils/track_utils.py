@@ -6,6 +6,7 @@ from tqdm import tqdm
 import napari
 import warnings
 from scipy.optimize import curve_fit
+from math import sqrt
 
 
 class TrackLabels:
@@ -139,10 +140,11 @@ def msd_fit_velocity_function(delta, d, alfa, v):
 
 
 def vector_distance(a, b):
-    return np.sqrt(np.sum((np.array(a) - np.array(b)) ** 2))
+    return abs(sqrt(((b[0] - a[0])**2) + ((b[1] - a[1])**2)))
+    # return np.sqrt(np.sum((np.array(a) - np.array(b)) ** 2))
 
 
-def msd(track, limit=26, diff=vector_distance):
+def msd_old(track, limit=26, diff=vector_distance):
     # 26 ~= 100 sec (3.8)
     _track = track
     if limit:
@@ -159,7 +161,34 @@ def msd(track, limit=26, diff=vector_distance):
     return _mean
 
 
-def basic_fit(msd_y, limit=26, diff=vector_distance):
+def msd(pos, result_columns, pos_columns, limit=25):
+    limit = min(limit, len(pos) - 1)
+    lagtimes = np.arange(1, limit+1)
+    msd_list = []
+    for lt in lagtimes:
+        diff = pos[lt:] - pos[:-lt]
+        msd_list.append(np.concatenate((np.nanmean(diff, axis=0),
+                                        np.nanmean(diff**2, axis=0))))
+    result = pd.DataFrame(msd_list, columns=result_columns, index=lagtimes)
+    result['msd'] = result[result_columns[-len(pos_columns):]].sum(1)
+    return result
+
+
+"""
+def calc_msd_simple(x):
+    n = len(x)
+    msd = []
+    for s in range(1,n//4):
+        x2 = 0.0
+        for i in range(n-s):
+            x2 += (x[i+s]-x[i])**2
+        x2 /= (n-s)
+        msd.append(x2)
+    return msd
+"""
+
+
+def basic_msd_fit(msd_y, limit=26, diff=vector_distance):
     y = np.array(msd_y)
     x = np.array(list(range(1, len(y) + 1))) * 3.8
 

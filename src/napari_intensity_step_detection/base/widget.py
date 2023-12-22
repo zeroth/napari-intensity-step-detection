@@ -18,8 +18,19 @@ class NLayerWidget(QWidget):
             'ui', 'base_widget.ui')
         self.load_ui(UI_FILE)
 
+        self.layersArea = QWidget()
         self.nLayersLayout = QFormLayout()
-        self.layersWidget.setLayout(self.nLayersLayout)
+        self.layersArea.setLayout(self.nLayersLayout)
+
+        self.actionArea = QWidget()
+        self.actionArea.setLayout(QVBoxLayout())
+        self.actionArea.layout().setContentsMargins(0, 0, 0, 0)
+
+        self.layersWidget.setLayout(QVBoxLayout())
+        self.layersWidget.layout().setContentsMargins(0, 0, 0, 0)
+        self.layersWidget.layout().addWidget(self.layersArea)
+        self.layersWidget.layout().addWidget(self.actionArea)
+
         self.msg_label = QLabel("Open Image and Label to get started")
         self.nLayersLayout.addRow(self.msg_label)
 

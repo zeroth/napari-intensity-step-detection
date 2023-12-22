@@ -16,6 +16,7 @@ class TrackFilterControls(QWidget):
     def __init__(self, parent: QWidget = None):
         super().__init__(parent)
         self.setLayout(QVBoxLayout())
+        self.controls = {}
 
     def set_properties(self, dataframe):
         self.database = dataframe
@@ -23,16 +24,16 @@ class TrackFilterControls(QWidget):
         self.create_controls()
 
     def create_controls(self):
-        self.controls = {}
         for property in self.properties:
             property = str(property).strip()
             if property == 'track_id':
                 continue
-            self.controls[property] = HFilterSlider(property)
+            if property not in self.controls:
+                self.controls[property] = HFilterSlider(property)
+                self.layout().addWidget(self.controls[property])
+                self.controls[property].valueChangedTitled.connect(self.propertyUpdated)
             self.controls[property].setRange((self.database[property].min(), self.database[property].max()))
             self.controls[property].setValue((self.database[property].min(), self.database[property].max()))
-            self.layout().addWidget(self.controls[property])
-            self.controls[property].valueChangedTitled.connect(self.propertyUpdated)
 
 
 class TrackFilter(QWidget):
@@ -144,12 +145,13 @@ class Tracking(QWidget):
         utils.add_to_viewer(self.base.napari_viewer, f"{image_layer.name} tracks", tracks, "tracks",
                             properties=properties,
                             scale=image_layer.scale,
-                            metadata={'all_meta': track_meta,
-                                      'all_tracks': tracked_df,
-                                      'tracking_params': {
-                                          "search_range": search_range,
-                                          "memory": memory
-                                      }
+                            metadata={
+                                        'all_meta': track_meta,
+                                        'all_tracks': tracked_df,
+                                        'tracking_params': {
+                                            "search_range": search_range,
+                                            "memory": memory
+                                        }
                                       }
                             )
 
