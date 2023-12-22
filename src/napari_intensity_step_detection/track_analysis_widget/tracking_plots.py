@@ -1,8 +1,12 @@
 from napari_intensity_step_detection.base.plots import Histogram, BaseMPLWidget, colors
 from typing import Optional
 from qtpy.QtWidgets import QWidget, QVBoxLayout, QGridLayout, QScrollArea, QLabel
-from qtpy.QtCore import Qt
+from qtpy.QtCore import Qt, Signal
+from qtpy.QtGui import QDoubleValidator
+from pathlib import Path
 import numpy as np
+from qtpy import uic
+from napari_intensity_step_detection import utils
 
 
 def get_alfa_color(alfa):
@@ -25,6 +29,33 @@ def get_alfa_label(alfa):
         return '0.4 < alfa < 1.2'
     else:
         return 'alfa > 1.2'
+
+
+class MSDAlphaBinSize(QWidget):
+    editingFinished = Signal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        UI_FILE = Path(__file__).resolve().parent.parent.joinpath(
+            'ui', 'histogram_bin_control_widget.ui')
+        self.load_ui(UI_FILE)
+        self.leControl.editingFinished.connect(self.editingFinished)
+        self.leControl.setValidator(QDoubleValidator())
+
+    def setTitle(self, text):
+        self.lbTitle.setText(text)
+
+    def title(self):
+        return self.lbTitle.text()
+
+    def setValue(self, val):
+        self.leControl.setText(str(val))
+
+    def value(self):
+        return int(self.leControl.text()) if self.leControl.text() else 0
+
+    def load_ui(self, path):
+        uic.loadUi(path, self)
 
 
 class MsdAlfaPlot(BaseMPLWidget):
@@ -111,6 +142,75 @@ class MsdPlot(BaseMPLWidget):
                 self.axes.scatter(data['x'], data['y'], marker='.', alpha=0.3, linewidths=0.5,
                                   edgecolors='black', color=_color if _color else colors[0])
         elif data['type'] == 'line':
+            x = data.get('x', None)
+            if x is None:
+                self.axes.plot(data['y'], color=_color if _color else colors[0])
+            else:
+                self.axes.plot(data['x'], data['y'], color=_color if _color else colors[0])
+        vspan_range = data.get('range', None)
+        if vspan_range is not None:
+            for index in range(1, len(vspan_range)):
+                self.axes.axvspan(vspan_range[index-1], vspan_range[index],
+                                  alpha=0.3, color=colors[int(index % len(colors))])
+
+        x_label = data.get('x_label', None)
+        if x_label is not None:
+            self.axes.set_xlabel(x_label)
+        y_label = data.get('y_label', None)
+        if y_label is not None:
+            self.axes.set_ylabel(y_label)
+
+
+class MsdAlphaPlot(BaseMPLWidget):
+
+    def __init__(
+        self,
+        parent: Optional[QWidget] = None,
+    ):
+        super().__init__(parent=parent)
+        self. data = None
+        self.title = ""
+        # self._setup_callbacks()
+        self.add_single_axes()
+        self.label = None
+        self.color = colors[0]
+        self.control = MSDAlphaBinSize()
+        self.toolbar.addSeparator()
+        self.toolbar.addWidget(self.control)
+        self.control.setTitle("Bin Size")
+        self.control.setValue(5)
+        if hasattr(self.toolbar, "coordinates"):
+            self.toolbar.coordinates = False
+
+    def setData(self, data, title):
+        self.data = data
+        self.title = title
+
+    def set_subtypes(self, subtypes):
+        self.subtypes = subtypes
+
+    def draw(self) -> None:
+        self.clear()
+        # self.axes.plot(self.data['x'], self.data['y'], color='b')
+        # self.plot_axis(self.data, _color=colors[3])
+
+        hist, bins, binsize = utils.histogram(self.data, self.control.value())
+        # self.control.setValue(binsize)
+        self.axes.hist(self.data, bins=bins, edgecolor='black',
+                       linewidth=0.5, color=self.color, label=self.label)
+        self.axes.set_title(label=self.title)
+        self.axes.legend(loc='upper right')
+
+        self.axes.set_xlabel(self.data['x_label'])
+        self.axes.set_ylabel(self.data['y_label'])
+
+        self.axes.set_title(label=self.title)
+
+        # needed
+        self.canvas.draw()
+
+    def plot_axis(self, data, _color=None):
+        if data['type'] == 'line':
             x = data.get('x', None)
             if x is None:
                 self.axes.plot(data['y'], color=_color if _color else colors[0])
