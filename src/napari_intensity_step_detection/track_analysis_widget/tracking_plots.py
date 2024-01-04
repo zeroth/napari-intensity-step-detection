@@ -52,39 +52,10 @@ class MSDAlphaBinSize(QWidget):
         self.leControl.setText(str(val))
 
     def value(self):
-        return int(self.leControl.text()) if self.leControl.text() else 0
+        return float(self.leControl.text()) if self.leControl.text() else 0
 
     def load_ui(self, path):
         uic.loadUi(path, self)
-
-
-class MsdAlfaPlot(BaseMPLWidget):
-
-    def __init__(
-        self,
-        parent: Optional[QWidget] = None,
-    ):
-        super().__init__(parent=parent)
-        self. msf_alfa = {}
-        self.title = ""
-        # self._setup_callbacks()
-        self.add_single_axes()
-
-    def setData(self, data, title):
-        self.msf_alfa = data
-        self.title = title
-
-    def draw(self) -> None:
-        self.clear()
-
-        for i, (name, data) in enumerate(self.msf_alfa.items()):
-            self.axes.plot(data, label=name, color=colors[i])
-
-        self.axes.legend(loc='upper right')
-        self.axes.set_title(label=self.title)
-
-        # needed
-        self.canvas.draw()
 
 
 class MsdPlot(BaseMPLWidget):
@@ -178,13 +149,14 @@ class MsdAlphaPlot(BaseMPLWidget):
         self.toolbar.addSeparator()
         self.toolbar.addWidget(self.control)
         self.control.setTitle("Bin Size")
-        self.control.setValue(5)
+        self.control.setValue(0.5)
         if hasattr(self.toolbar, "coordinates"):
             self.toolbar.coordinates = False
 
     def setData(self, data, title):
         self.data = data
         self.title = title
+        self.control.editingFinished.connect(self.draw)
 
     def set_subtypes(self, subtypes):
         self.subtypes = subtypes
@@ -194,11 +166,12 @@ class MsdAlphaPlot(BaseMPLWidget):
         # self.axes.plot(self.data['x'], self.data['y'], color='b')
         # self.plot_axis(self.data, _color=colors[3])
 
-        hist, bins, binsize = utils.histogram(self.data, self.control.value())
+        hist, bins, binsize = utils.histogram(self.data['y'], self.control.value())
         # self.control.setValue(binsize)
-        self.axes.hist(self.data, bins=bins, edgecolor='black',
-                       linewidth=0.5, color=self.color, label=self.label)
-        self.axes.set_title(label=self.title)
+        # self.axes.hist(self.data, bins=bins, edgecolor='black',
+        #                linewidth=0.5, color=self.color, label=self.label)
+        self.axes.plot(bins[:-1], hist, color=colors[0])
+        # self.axes.set_title(label=self.title)
         self.axes.legend(loc='upper right')
 
         self.axes.set_xlabel(self.data['x_label'])
@@ -209,26 +182,7 @@ class MsdAlphaPlot(BaseMPLWidget):
         # needed
         self.canvas.draw()
 
-    def plot_axis(self, data, _color=None):
-        if data['type'] == 'line':
-            x = data.get('x', None)
-            if x is None:
-                self.axes.plot(data['y'], color=_color if _color else colors[0])
-            else:
-                self.axes.plot(data['x'], data['y'], color=_color if _color else colors[0])
-        vspan_range = data.get('range', None)
-        if vspan_range is not None:
-            for index in range(1, len(vspan_range)):
-                self.axes.axvspan(vspan_range[index-1], vspan_range[index],
-                                  alpha=0.3, color=colors[int(index % len(colors))])
-
-        x_label = data.get('x_label', None)
-        if x_label is not None:
-            self.axes.set_xlabel(x_label)
-        y_label = data.get('y_label', None)
-        if y_label is not None:
-            self.axes.set_ylabel(y_label)
-
+   
 
 class TrackAnalysisResult(QWidget):
     def __init__(self, parent: QWidget = None):
@@ -274,6 +228,13 @@ class TrackAnalysisResult(QWidget):
                     hist.setMinimumWidth(400)
                     hist.setMinimumHeight(400)
                     self.centralWidget.layout().addWidget(hist, row, col)
+                elif value['type'] == 'msd_fit_alfa':
+                    plot = MsdAlphaPlot()
+                    plot.setData(value['data'], title=f"{key}")
+                    plot.draw()
+                    plot.setMinimumWidth(400)
+                    plot.setMinimumHeight(400)
+                    self.centralWidget.layout().addWidget(plot, row, col)
                 else:
                     msd_plot = MsdPlot()
                     msd_plot.setData(value['data'], title=f"{key}")

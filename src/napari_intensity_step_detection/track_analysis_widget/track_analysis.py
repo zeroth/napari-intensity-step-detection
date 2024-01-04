@@ -7,6 +7,11 @@ from napari_intensity_step_detection import utils
 import numpy as np
 from .tracking_plots import TrackAnalysisResult
 from collections import OrderedDict
+import os
+import sys
+from datetime import datetime
+import pandas as pd
+import json
 
 
 class TrackAnalysis(NLayerWidget):
@@ -14,7 +19,8 @@ class TrackAnalysis(NLayerWidget):
         super().__init__(napari_viewer, parent)
 
         # set layer filter
-        self.layer_filter = {"Track": napari.layers.Tracks, "Shape": napari.layers.Shapes}
+        self.layer_filter = {"Track": napari.layers.Tracks,
+                             "Shape": napari.layers.Shapes}
         self.analyze_button = QPushButton("Analyze")
         self.analyze_button.clicked.connect(self.analyze)
         self.actionArea.layout().addWidget(self.analyze_button)
@@ -23,6 +29,10 @@ class TrackAnalysis(NLayerWidget):
         self.layout().addWidget(self.result_tabs)
 
     def analyze(self):
+        now = datetime.now()
+        quick_save_path = os.path.join(".", now.strftime("%m_%d_%Y_%H_%M_%S"))
+        os.makedirs(quick_save_path, exist_ok=True)
+
         track_layer = self.get_layer('Track')
         if track_layer is None:
             warnings.warn("No Image or Lable selected!")
@@ -38,12 +48,17 @@ class TrackAnalysis(NLayerWidget):
             all_tracks = track_layer.metadata['filter_tracks']
 
         result_dict = {}
-        all_alfa = []
+        all_alfa = {}
+
+        # save track_meta and tracks
+        track_meta.to_csv(os.path.join(quick_save_path, "track_meta.csv"))
+        all_tracks.to_csv(os.path.join(quick_save_path, "all_tracks.csv"))
 
         def _get_shape_layer_data(shape_layer):
             if shape_layer is None:
                 return None
-            shape_layer_data = shape_layer.data[0] if isinstance(shape_layer.data, list) else shape_layer.data
+            shape_layer_data = shape_layer.data[0] if isinstance(
+                shape_layer.data, list) else shape_layer.data
             shape_layer_data = shape_layer_data[:, 1:3]
             top_left = shape_layer_data[0]
             bottom_right = shape_layer_data[2]
@@ -87,7 +102,12 @@ class TrackAnalysis(NLayerWidget):
             'type': 'lifetime_vs_intensity',
             'data': lifetime_vs_intensity
         }
+
+        # save lifetime vs intensity
+        pd.DataFrame(lifetime_vs_intensity).to_csv(os.path.join(
+            quick_save_path, "lifetime_vs_intensity.csv"))
         # /lifetime vs intensity
+
         """
         MsdPlot  dict_keys(['type', 'x', 'y'])
         plot_axis  dict_keys(['type', 'x', 'y'])
@@ -95,11 +115,14 @@ class TrackAnalysis(NLayerWidget):
         plot_axis  dict_keys(['type', 'y'])
         """
         # msd
-        msd = {'type': 'msd', 'data': {'x_label': 'delay', 'y_label': 'msd', 'series': []}}
+        msd = {'type': 'msd', 'data': {
+            'x_label': 'delay', 'y_label': 'msd', 'series': []}}
 
-        tg = all_tracks.groupby('track_id', as_index=False, group_keys=True, dropna=True)
+        tg = all_tracks.groupby(
+            'track_id', as_index=False, group_keys=True, dropna=True)
         for name, group in tg:
-            track = group[['x', 'y', 'intensity_mean', 'frame']].sort_values('frame')
+            track = group[['x', 'y', 'intensity_mean', 'frame']
+                          ].sort_values('frame')
             _track = track.to_numpy()
 
             # filter track
@@ -115,12 +138,13 @@ class TrackAnalysis(NLayerWidget):
 
             pos = track.set_index('frame')[pos_columns]
             pos = pos.reindex(np.arange(pos.index[0], 1 + pos.index[-1]))
-            result = utils.msd(pos.values, result_columns=result_columns, pos_columns=pos_columns, limit=26)
+            result = utils.msd(
+                pos.values, result_columns=result_columns, pos_columns=pos_columns, limit=26)
 
             y = result['msd'].to_numpy()
 
             alfa, _y = utils.basic_msd_fit(y)
-            all_alfa.append(alfa)
+            all_alfa[name] = alfa
 
             series = {
                 'track_id': name,
@@ -131,17 +155,26 @@ class TrackAnalysis(NLayerWidget):
             msd['data']['series'].append(series)
 
         result_dict[track_layer.name]["msd"] = msd
+        # save msd
+        # pd.DataFrame(msd).to_csv(os.path.join(quick_save_path, "msd.csv"))
         # /msd
 
         # msd fit alfa
-        msd_plt_y, msd_plt_x = utils.msd_alfa_plot(all_alfa)
+        print("msd fit alfa")
+        # save msd fit alfa
+        # pd.DataFrame(all_alfa).to_csv(os.path.join(
+        #     quick_save_path, "msd_fit_alfa.csv"))
+        with open(os.path.join(quick_save_path, "msd_fit_alfa.json"), 'w') as f:
+            f.write(json.dumps(all_alfa))
+
+        all_alfa_vals = np.array(list(all_alfa.values()))
+        # msd_plt_y, msd_plt_x = utils.msd_alfa_plot(all_alfa_vals)
         result_dict[track_layer.name]["msd_fit_alfa"] = {
             'type': 'msd_fit_alfa',
             'data': {
                 'type': 'line',
-                'x': msd_plt_x,
-                'y': msd_plt_y,
-                'range': [np.min(msd_plt_x), 0.4, 1.2,  np.max(msd_plt_x)],
+                'y': all_alfa_vals,
+                # 'range': [np.min(msd_plt_x), 0.4, 1.2,  np.max(msd_plt_x)],
                 'x_label': 'alfa',
                 'y_label': 'number of tracks'
             }

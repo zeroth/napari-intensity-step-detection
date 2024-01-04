@@ -204,7 +204,19 @@ def velocity_fit(track, limit=26, diff=vector_distance):
     x = np.array(list(range(1, len(y) + 1))) * 3.8
 
     init = np.array([.001, .01, .01])
-    best_value, _ = curve_fit(msd_fit_velocity_function, x, y, p0=init, maxfev=1000000)
-    _y = msd_fit_velocity_function(x, best_value[0], best_value[1], best_value[2])
+    best_value, _ = curve_fit(
+        msd_fit_velocity_function, x, y, p0=init, maxfev=1000000)
+    _y = msd_fit_velocity_function(
+        x, best_value[0], best_value[1], best_value[2])
 
     return best_value[1], best_value[2], _y
+
+
+# isconsistency using numpy
+def isConsistency(data):
+    n = len(data)
+    return (sum(np.diff(sorted(data)) == 1) >= n)
+
+
+def isConsistency_old(data):
+    return sorted(data) == list(range(min(data), max(data)+1))
