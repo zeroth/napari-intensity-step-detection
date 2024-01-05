@@ -161,7 +161,10 @@ def msd_old(track, limit=26, diff=vector_distance):
     return _mean
 
 
-def msd(pos, result_columns, pos_columns, limit=25):
+def msd(pos, limit=25):
+    pos_columns = ['x', 'y']
+    result_columns = ['<{}>'.format(p) for p in pos_columns] + \
+        ['<{}^2>'.format(p) for p in pos_columns]
     limit = min(limit, len(pos) - 1)
     lagtimes = np.arange(1, limit+1)
     msd_list = []
@@ -171,7 +174,7 @@ def msd(pos, result_columns, pos_columns, limit=25):
                                         np.nanmean(diff**2, axis=0))))
     result = pd.DataFrame(msd_list, columns=result_columns, index=lagtimes)
     result['msd'] = result[result_columns[-len(pos_columns):]].sum(1)
-    return result
+    return result['msd']
 
 
 """
@@ -188,20 +191,20 @@ def calc_msd_simple(x):
 """
 
 
-def basic_msd_fit(msd_y, limit=26, diff=vector_distance):
+def basic_msd_fit(msd_y, delta=3.8, limit=26, diff=vector_distance):
     y = np.array(msd_y)
-    x = np.array(list(range(1, len(y) + 1))) * 3.8
+    x = np.array(list(range(1, len(y) + 1))) * delta
 
     init = np.array([.001, .01])
-    best_value, _ = curve_fit(msd_fit_function, x, y, p0=init, maxfev=10000)
+    best_value, _ = curve_fit(msd_fit_function, x, y, p0=init, maxfev=1000000)
     _y = msd_fit_function(x, best_value[0], best_value[1])
 
     return best_value[1], _y
 
 
-def velocity_fit(track, limit=26, diff=vector_distance):
+def velocity_fit(track, delta=3.8, limit=26, diff=vector_distance):
     y = np.array(msd(track, limit=limit, diff=diff))
-    x = np.array(list(range(1, len(y) + 1))) * 3.8
+    x = np.array(list(range(1, len(y) + 1))) * delta
 
     init = np.array([.001, .01, .01])
     best_value, _ = curve_fit(

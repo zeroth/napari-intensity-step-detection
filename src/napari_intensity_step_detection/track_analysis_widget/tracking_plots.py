@@ -31,7 +31,7 @@ def get_alfa_label(alfa):
         return 'alfa > 1.2'
 
 
-class MSDAlphaBinSize(QWidget):
+class DoubleBinSize(QWidget):
     editingFinished = Signal()
 
     def __init__(self, parent=None):
@@ -91,7 +91,8 @@ class MsdPlot(BaseMPLWidget):
                     if mode == 'msd':
                         self.plot_axis(data, _color=colors[3])
                     elif mode == 'msf_fit':
-                        self.plot_axis(data, _color=get_alfa_color(series['alfa']))
+                        self.plot_axis(
+                            data, _color=get_alfa_color(series['alfa']))
                     elif mode == 'inteinsity':
                         self.plot_axis(data, _color=colors[1])
             self.axes.set_xlabel(self.data['x_label'])
@@ -115,9 +116,11 @@ class MsdPlot(BaseMPLWidget):
         elif data['type'] == 'line':
             x = data.get('x', None)
             if x is None:
-                self.axes.plot(data['y'], color=_color if _color else colors[0])
+                self.axes.plot(
+                    data['y'], color=_color if _color else colors[0])
             else:
-                self.axes.plot(data['x'], data['y'], color=_color if _color else colors[0])
+                self.axes.plot(data['x'], data['y'],
+                               color=_color if _color else colors[0])
         vspan_range = data.get('range', None)
         if vspan_range is not None:
             for index in range(1, len(vspan_range)):
@@ -145,7 +148,7 @@ class MsdAlphaPlot(BaseMPLWidget):
         self.add_single_axes()
         self.label = None
         self.color = colors[0]
-        self.control = MSDAlphaBinSize()
+        self.control = DoubleBinSize()
         self.toolbar.addSeparator()
         self.toolbar.addWidget(self.control)
         self.control.setTitle("Bin Size")
@@ -166,7 +169,8 @@ class MsdAlphaPlot(BaseMPLWidget):
         # self.axes.plot(self.data['x'], self.data['y'], color='b')
         # self.plot_axis(self.data, _color=colors[3])
 
-        hist, bins, binsize = utils.histogram(self.data['y'], self.control.value())
+        hist, bins, binsize = utils.histogram(
+            self.data['y'], self.control.value())
         # self.control.setValue(binsize)
         # self.axes.hist(self.data, bins=bins, edgecolor='black',
         #                linewidth=0.5, color=self.color, label=self.label)
@@ -182,7 +186,102 @@ class MsdAlphaPlot(BaseMPLWidget):
         # needed
         self.canvas.draw()
 
-   
+
+class TrackingPlot(BaseMPLWidget):
+    def __init__(
+        self,
+        title,
+        data,
+        parent: Optional[QWidget] = None,
+    ):
+        super().__init__(parent=parent)
+        self. data = data
+        self.title = title
+
+        self.add_single_axes()
+        self.label = None
+        self.color = colors[0]
+
+    def add_bin_size_control(self):
+        if hasattr(self, "control"):
+            return
+        self.control = DoubleBinSize()
+        self.toolbar.addSeparator()
+        self.control.setTitle("Bin Size")
+        self.control.setValue(0.5)
+        self.toolbar.addWidget(self.control)
+        self.control.editingFinished.connect(self.draw)
+
+        # if hasattr(self.toolbar, "coordinates"):
+        #     self.toolbar.coordinates = False
+
+    def plot_line(self, data, _color=None):
+        x = data.get('x', None)
+        if x is None:
+            self.axes.plot(
+                data['y'], color=_color if _color else colors[0])
+        else:
+            self.axes.plot(data['x'], data['y'],
+                           color=_color if _color else colors[0])
+
+    def plot_scatter(self, data, _color=None):
+        x = data.get('x', None)
+        if x is None:
+            self.axes.scatter(data['y'], marker='.', alpha=0.3, linewidths=0.5,
+                              edgecolors='black', color=_color if _color else colors[0])
+        else:
+            self.axes.scatter(data['x'], data['y'], marker='.', alpha=0.3, linewidths=0.5,
+                              edgecolors='black', color=_color if _color else colors[0])
+
+    def plot_histline(self, data, _color=None):
+        self.add_bin_size_control()
+        hist, bins, binsize = utils.histogram(
+            data['y'], self.control.value())
+        self.axes.plot(bins[:-1], hist, color=colors[0])
+
+    def plot_hist(self, data, _color=None):
+        self.add_bin_size_control()
+        hist, bins, binsize = utils.histogram(
+            data['y'], self.control.value())
+        self.axes.hist(data['y'], bins=bins, edgecolor='black',
+                       linewidth=0.5, color=self.color, label=self.label)
+
+    def draw_values(self, data):
+        print(data.keys())
+        if data['type'] == 'scatter':
+            self.plot_scatter(data)
+        elif data['type'] == 'line':
+            self.plot_line(data)
+        elif data['type'] == 'histline':
+            self.plot_histline(data)
+        elif data['type'] == 'histogram':
+            self.plot_hist(data)
+        else:
+            raise Exception(f"Unknown plot type: {data['type']}")
+
+    def draw(self) -> None:
+        self.clear()
+
+        x_label = self.data.get('x_label', None)
+        y_label = self.data.get('y_label', None)
+        if x_label is not None:
+            self.axes.set_xlabel(x_label)
+        if y_label is not None:
+            self.axes.set_ylabel(y_label)
+
+        if isinstance(self.data['data'], list):
+            for data in self.data['data']:
+                self.draw_values(data)
+        else:
+            self.draw_values(self.data['data'])
+
+        # needed
+        self.canvas.draw()
+
+
+class TrackingPlotGrid:
+    pass
+
 
 class TrackAnalysisResult(QWidget):
     def __init__(self, parent: QWidget = None):
@@ -207,42 +306,93 @@ class TrackAnalysisResult(QWidget):
         self.result_dict = result
         self.draw()
 
+    def get_chart(self, name, data):
+        if 'is_grid' in data:
+            chart = TrackingPlotGrid(name, data)
+        else:
+            chart = TrackingPlot(name, data)
+        # chart.setData(data, title=f"{name}")
+        chart.draw()
+        return chart
+
     def draw(self):
         title_labled = QLabel()
         title_labled.setTextFormat(1)
-        title_labled.setText(f"<center><h2>{' '.join(self.title.split(' ')[:-1])}</h2></center>")
+        title_labled.setText(
+            f"<center><h2>{' '.join(self.title.split(' ')[:-1])}</h2></center>")
         title_labled.setAlignment(Qt.AlignCenter)
-        title_labled.setStyleSheet("QLabel { background-color : white; color : black; }")
+        title_labled.setStyleSheet(
+            "QLabel { background-color : white; color : black; }")
         self.centralWidget.layout().addWidget(title_labled, 0, 0, 1, -1)
-        for name, data in self.result_dict.items():
-            for i, (key, value) in enumerate(data.items()):
-                row = int((i+2) / self.col)
-                col = int((i+2) % self.col)
+        for index, (name, data) in enumerate(self.result_dict.items()):
+            row = int((index+2) / self.col)
+            col = int((index+2) % self.col)
+            chart = self.get_chart(name, data)
+            chart.setMinimumWidth(400)
+            chart.setMinimumHeight(400)
+            self.centralWidget.layout().addWidget(chart, row, col)
 
-                if value['type'] == 'histogram':
-                    hist = Histogram()
-                    hist.setData(value['data']['y'], title=f"{key}", label=f"{key}")
-                    hist.setXAxisLabel(value['data']['x_label'])
-                    hist.setYAxisLabel(value['data']['y_label'])
-                    hist.draw()
-                    hist.setMinimumWidth(400)
-                    hist.setMinimumHeight(400)
-                    self.centralWidget.layout().addWidget(hist, row, col)
-                elif value['type'] == 'msd_fit_alfa':
-                    plot = MsdAlphaPlot()
-                    plot.setData(value['data'], title=f"{key}")
-                    plot.draw()
-                    plot.setMinimumWidth(400)
-                    plot.setMinimumHeight(400)
-                    self.centralWidget.layout().addWidget(plot, row, col)
-                else:
-                    msd_plot = MsdPlot()
-                    msd_plot.setData(value['data'], title=f"{key}")
-                    msd_plot.draw()
-                    msd_plot.setMinimumWidth(400)
-                    msd_plot.setMinimumHeight(400)
-                    self.centralWidget.layout().addWidget(msd_plot, row, col)
+        # needed
         self.scrollArea.setWidget(self.centralWidget)
 
-# (value['type'] == 'msd') or (value['type'] == 'intensity_graph')\
-#                         or (value['type'] == 'lifetime_vs_intensity') or (value['type'] == 'alfa_hist') or (value['type'] == 'msd_fit_alfa')
+
+'''
+result_dict = {
+    'plot_category': {
+        'title': 'title',
+        'is_grid': True, # optional
+        'x_label': 'x values',
+        'y_label': 'y values'
+        'data':[{
+            'type': 'scatter',
+            'x': [],
+            'y': []    
+
+        },
+        {
+            'type': 'line',
+            'x': [],
+            'y': []
+
+        },
+        {
+            'type': 'histogram',
+            'x': [], # bin edges
+            'y': [], # bin counts/ histogram
+
+        },
+        ],
+
+        },
+        'plot_category2': {
+        'title': 'title',
+        'is_grid': True,
+        'data':[{
+            'type': 'scatter',
+            'x': [],
+            'y': [],
+            'x_label': 'x values',
+            'y_label': 'y values'
+
+        },
+        {
+            'type': 'histline',
+            'x': [], # bin edges
+            'y': [], # bin counts/ histogram
+            'x_label': 'x values',
+            'y_label': 'y values'
+
+        },
+        {
+            'type': 'histogram',
+            'x': [], # bin edges
+            'y': [], # bin counts/ histogram
+            'x_label': 'x values',
+            'y_label': 'y values'
+
+        },
+        ],
+
+        },
+}
+'''
