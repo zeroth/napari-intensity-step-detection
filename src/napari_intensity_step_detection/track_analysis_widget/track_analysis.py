@@ -122,7 +122,7 @@ class TrackAnalysis(NLayerWidget):
             # filter track
             bounds = _get_shape_layer_data(self.get_layer('Shape'))
             if bounds is not None:
-                if not _is_track_in_box(_track[0], bounds[0], bounds[1]):
+                if _is_track_in_box(_track[0], bounds[0], bounds[1]):
                     continue
             # /filter track
 

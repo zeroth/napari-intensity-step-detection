@@ -4,10 +4,18 @@ from napari import Viewer, run
 from qtpy.uic import compileUi
 from pathlib import Path
 from pprint import pprint
+import logging
+
+logging.basicConfig(filename="nisd.log",
+                    filemode='a',
+                    format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
+                    datefmt='%H:%M:%S',
+                    level=logging.CRITICAL)
 
 
 def build():
-    UI_DIR = Path(__file__).resolve().parent.joinpath('src', 'napari_intensity_step_detection', 'ui')
+    UI_DIR = Path(__file__).resolve().parent.joinpath(
+        'src', 'napari_intensity_step_detection', 'ui')
     UI_FILE = UI_DIR.joinpath("h_slider.ui")
     pyfile_name = f"ui_{UI_FILE.stem}.py"
     pyfile = open(UI_FILE.with_name(pyfile_name), 'wt', encoding='utf8')
@@ -32,4 +40,7 @@ def launch():
 
 
 if __name__ == "__main__":
-    launch()
+    try:
+        launch()
+    except Exception as e:
+        logging.exception(e)

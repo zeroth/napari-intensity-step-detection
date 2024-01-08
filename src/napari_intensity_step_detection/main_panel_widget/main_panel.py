@@ -25,7 +25,8 @@ class MainPanel(NLayerWidget):
         # set layer filter
         self.layer_filter = {"Image": napari.layers.Image,
                              "Label": napari.layers.Labels,
-                             "Track": napari.layers.Tracks}
+                             "Track": napari.layers.Tracks,
+                             "Shape": napari.layers.Shapes}
 
         self.ui.panel_widget.setLayout(QVBoxLayout())
         self.ui.panel_widget.layout().setContentsMargins(0, 0, 0, 0)
