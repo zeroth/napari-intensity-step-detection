@@ -15,36 +15,34 @@ class QuickAnalysisWidget(QWidget):
         self.layout().addWidget(self.track_plot, 0, 0)
         self.layout().addWidget(self.msd_plot, 0, 1)
 
-    def set_traget_track_id(self, track_id):
-        self.track_id = track_id
-        track_layer = self.get_layer('Track')
-        if track_layer is None:
-            return
-        track_df = track_layer.metadata['all_tracks']
-        track = track_df[track_df['track_id'] == track_id]
-        track = track[['x', 'y']].to_numpy()
+    def set_traget_track(self, track):
+        self.track = track
+
         _track = {
             'x_label': 'X',
             'y_label': 'Y',
             'data': {
-                'x': track[:, 0],
-                'y': track[:, 1],
+                'y': track.points[:, 0],
+                'x': track.points[:, 1],
                 'type': 'line'
             }
         }
         self.set_track(_track)
 
-        result = utils.msd(track)
-        y = result.to_numpy()
-        x = np.arange(0, len(y)) * 5.2
-        alfa, _y = utils.basic_msd_fit(y, delta=5.2)
+        y = track.msd
+        x = np.arange(0, len(y)) * track.delta
+        alfa, _y = track._msd_fit_op
         _msd = {
             'x_label': 'Time (s)',
             'y_label': 'MSD',
-            'data': {
+            'data': [{
                 'x': x,
                 'y': _y,
-                'type': 'line'}
+                'type': 'line'},
+                {
+                'x': x,
+                'y': y,
+                'type': 'line'}]
         }
         self.set_msd(_msd)
         # all_alfa[name] = alfa

@@ -1,14 +1,34 @@
 from pathlib import Path
 from napari.utils import progress
-from qtpy.QtWidgets import QWidget, QVBoxLayout
+from qtpy.QtWidgets import QWidget, QVBoxLayout, QTableView, QLabel, QTabWidget
 from napari_intensity_step_detection.base.plots import Histogram
-from napari_intensity_step_detection.base.track import Track, pd_to_tracks, tracks_to_pd, tracks_to_napari_tracks, tracks_to_tracks_meta
+from napari_intensity_step_detection.base.track import Track, pd_to_tracks, tracks_to_pd, tracks_to_napari_tracks, tracks_to_tracks_meta, filter_tracks_by_id, TrackMetaModel, TrackMetaProxyModel
 from napari_intensity_step_detection import utils
 from napari_intensity_step_detection.utils import TrackLabels as Labels
 from napari_intensity_step_detection.base.sliders import HFilterSlider
-from qtpy.QtCore import Signal
+from qtpy.QtCore import Signal, QItemSelectionModel, QModelIndex, Qt
 from napari.utils import notifications
 import warnings
+from napari_intensity_step_detection.main_panel_widget.quick_analysis_widget import QuickAnalysisWidget
+
+
+class TrackList(QWidget):
+    selectionChanged = Signal(QModelIndex, QModelIndex)
+
+    def __init__(self, parent: QWidget = None):
+        super().__init__(parent)
+        self.setLayout(QVBoxLayout())
+        self.layout().setContentsMargins(0, 0, 0, 0)
+        self.track_meta_table = QTableView()
+        self.layout().addWidget(self.track_meta_table)
+        self.track_meta_table.setSortingEnabled(True)
+
+    def set_model(self, model):
+        # self.track_meta_table.clear()
+        self.track_meta_table.setModel(model)
+        self.selection_model = QItemSelectionModel(model)
+        self.track_meta_table.setSelectionModel(self.selection_model)
+        self.selection_model.currentChanged.connect(self.selectionChanged)
 
 
 class TrackFilterControls(QWidget):
@@ -17,6 +37,7 @@ class TrackFilterControls(QWidget):
     def __init__(self, parent: QWidget = None):
         super().__init__(parent)
         self.setLayout(QVBoxLayout())
+        self.layout().setContentsMargins(0, 0, 0, 0)
         self.controls = {}
 
     def set_properties(self, dataframe):
@@ -54,21 +75,12 @@ class TrackFilter(QWidget):
     def draw(self):
         self.plot.clear()
         data = {}
-        # if isinstance(self.dataframe, list):
-        for row in self.dataframe:
-            for property, val in row.items():
-                property = str(property).strip()
-                if property == 'track_id':
-                    continue
-                if property not in data:
-                    data[property] = []
-                data[property].append(val)
-                # data[property] = val
-        # for property in self.dataframe.columns:
-        #     property = str(property).strip()
-        #     if property == 'track_id':
-        #         continue
-        #     data[property] = self.dataframe[property].to_numpy()
+
+        for property in self.dataframe.columns:
+            property = str(property).strip()
+            if property == 'track_id':
+                continue
+            data[property] = self.dataframe[property].to_numpy()
         self.plot.setData(data=data, title="Filtered View")
         self.plot.draw()
 
@@ -97,15 +109,45 @@ class Tracking(QWidget):
         self.sbSearchRange.setValue(2)
         self.sbMemory.setValue(1)
         self.sbDelta.setValue(5.2)
+        self.sbMinLength.setValue(5)
+        self.sbMinLength.setMinimum(5)
+        self.cbStepDetection.setChecked(False)
+
+        def ifStepDetection(checked):
+            if checked == 1:
+                self.sbMinLength.setMinimum(10)
+                self.sbMinLength.setValue(10)
+            else:
+                self.sbMinLength.setMinimum(5)
+                self.sbMinLength.setValue(5)
+        self.cbStepDetection.toggled.connect(ifStepDetection)
+
+        # meta table view
+        self.meta_table = TrackList(self)
+
+        self.base.napari_viewer.window.add_dock_widget(
+            self.meta_table, name="Track Info", area="left")
+
+        # setup tracking view
+        self.trackingView.setLayout(QVBoxLayout())
+        self.trackingView.layout().setContentsMargins(0, 0, 0, 0)
+        self.trackingTabs = QTabWidget()
+        self.trackingView.layout().addWidget(self.trackingTabs)
 
         # setup filter view
-        self.trackFilter = TrackFilter()
+        self.filterView = QWidget()
         self.filterView.setLayout(QVBoxLayout())
+        self.trackFilter = TrackFilter()
         self.filterView.layout().addWidget(self.trackFilter)
 
         # setup tracking controls
         self.controls = TrackFilterControls()
         self.filterView.layout().addWidget(self.controls)
+        self.trackingTabs.addTab(self.filterView, "Filter")
+
+        # setup quick analysis view
+        self.quickAnalysisView = QuickAnalysisWidget(self.base)
+        self.trackingTabs.addTab(self.quickAnalysisView, "Quick Analysis")
 
         def _start_tracking():
             if (not self.base.get_layer('Image')) and (not self.base.get_layer('Label')):
@@ -122,26 +164,26 @@ class Tracking(QWidget):
             warnings.warn("No Track selected!")
             notifications.show_warning("No Track selected!")
             return
-        track_meta = current_track_layer.metadata['all_meta']
-
-        track_meta_filtered = track_meta[track_meta[property].between(
-            vrange[0], vrange[1])]
-        track_ids = track_meta_filtered['track_id'].to_numpy()
+        all_tracks_meta = current_track_layer.metadata['all_meta']
         all_tracks = current_track_layer.metadata['all_tracks']
-        filtered_tracks_df = all_tracks[all_tracks['track_id'].isin(track_ids)]
 
-        filtered_tracks, properties, _ = utils.pd_to_napari_tracks(filtered_tracks_df,
-                                                                   Labels.track_header,
-                                                                   Labels.track_meta_header)
+        filtered_tracks_meta = all_tracks_meta[all_tracks_meta[property].between(
+            vrange[0], vrange[1])]
+        filtered_track_ids = filtered_tracks_meta['track_id'].to_numpy()
+        filtered_tracks = filter_tracks_by_id(all_tracks, filtered_track_ids)
 
-        utils.add_to_viewer(self.base.napari_viewer, current_track_layer.name, filtered_tracks, "tracks",
-                            properties=properties, scale=current_track_layer.scale,
-                            metadata={'all_meta': track_meta,
+        napari_tracks, properties = tracks_to_napari_tracks(filtered_tracks)
+        filtered_tracks_meta = tracks_to_tracks_meta(filtered_tracks)
+
+        utils.add_to_viewer(self.base.napari_viewer, current_track_layer.name, napari_tracks, "tracks",
+                            properties=properties,
+                            scale=current_track_layer.scale,
+                            metadata={'all_meta': all_tracks_meta,
                                       'all_tracks': all_tracks,
-                                      "filter_meta": track_meta_filtered,
-                                      "filter_tracks": filtered_tracks_df,
+                                      "filter_meta": filtered_tracks_meta,
+                                      "filter_tracks": filtered_tracks,
                                       'tracking_params': current_track_layer.metadata['tracking_params']})
-        self.trackFilter.set_data_source(track_meta_filtered)
+        self.trackFilter.set_data_source(filtered_tracks_meta)
 
     def track(self):
         image_layer = self.base.get_layer('Image')
@@ -161,22 +203,19 @@ class Tracking(QWidget):
         # column name change from particle to track_id
         tracked_df.rename(columns={'particle': 'track_id'}, inplace=True)
         bounds = _get_shape_layer_data(self.base.get_layer('Shape'))
-        tracks = pd_to_tracks(tracked_df, is_3d=False,
-                              delta=self.sbDelta.value(), ignore_reagion=bounds)
-        napari_tracks, properties = tracks_to_napari_tracks(tracks)
-        track_meta = tracks_to_tracks_meta(tracks)
-
-        # napari_tracks, properties, track_meta = utils.pd_to_napari_tracks(tracked_df,
-        #                                                                   Labels.track_header,
-        #                                                                   Labels.track_meta_header)
-        # self.setup_tracking_state(tracked_df=tracked_df, track_meta=track_meta)
-        # self.state.setData(f"{self.name}", {"tracks_df": tracked_df, "meta_df": track_meta})
+        self.tracks = pd_to_tracks(tracked_df, is_3d=False,
+                                   delta=self.sbDelta.value(), min_length=int(self.sbMinLength.value()), step_detection=self.cbStepDetection.isChecked(), ignore_reagion=bounds, progress=progress)
+        tracks = self.tracks
+        napari_tracks, properties = tracks_to_napari_tracks(
+            tracks, progress=progress)
+        track_meta = tracks_to_tracks_meta(tracks, progress=progress)
 
         pbr.update(100)
         pbr.close()
-        self.trackFilter.set_data_source(track_meta)
+
+        # update napari viewer
         utils.add_to_viewer(self.base.napari_viewer, f"{image_layer.name} tracks", napari_tracks, "tracks",
-                            # properties=properties,
+                            properties=properties,
                             scale=image_layer.scale,
                             metadata={
                                 'all_meta': track_meta,
@@ -188,10 +227,32 @@ class Tracking(QWidget):
                             }
                             )
 
+        # update filter view
+        self.trackFilter.set_data_source(track_meta)
+        self.controls.set_properties(track_meta)
+        self.controls.propertyUpdated.connect(self.filter_tracks)
+
+        # meta_models
+        self.track_meta_model = TrackMetaModel(track_meta)
+        self.track_meta_model_proxy = TrackMetaProxyModel()
+        self.track_meta_model_proxy.setTrackMetaModel(self.track_meta_model)
+
+        self.meta_table.set_model(self.track_meta_model_proxy)
+
+        self.controls.propertyUpdated.connect(
+            self.track_meta_model_proxy.property_filter_updated)
+
+        self.meta_table.selectionChanged.connect(self.track_selection_changed)
         # tell everyone that new data is ready
         self.base.updated.emit()
 
-        # update filter view
-        # self.trackFilter.set_data_source(track_meta)
-        # self.controls.set_properties(track_meta)
-        # self.controls.propertyUpdated.connect(self.filter_tracks)
+    def track_selection_changed(self, current: QModelIndex, previous: QModelIndex):
+        track_id_index = self.track_meta_model_proxy.index(
+            current.row(), 0, current.parent())
+        track_id = self.track_meta_model_proxy.data(
+            track_id_index, role=Qt.ItemDataRole.DisplayRole)
+
+        track_id = int(float(track_id.strip()))
+
+        track = filter_tracks_by_id(self.tracks, [track_id])[0]
+        self.quickAnalysisView.set_traget_track(track)

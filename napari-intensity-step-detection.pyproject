@@ -6,13 +6,22 @@
         "src/napari_intensity_step_detection/base_widgets/sliders.py",
         "src/napari_intensity_step_detection/tracking_widget/tracking_widget.py",
         "src/napari_intensity_step_detection/tracking_widget/__init__.py",
+
+
         "src/napari_intensity_step_detection/main_panel_widget/__init__.py",
-        "src/napari_intensity_step_detection/main_panel_widget/segmentation_widget.py",
+        "src/napari_intensity_step_detection/main_panel_widget/general_plot.py",
+        "src/napari_intensity_step_detection/main_panel_widget/main_panel.py",
         "src/napari_intensity_step_detection/main_panel_widget/main_panel.ui",
-        "src/napari_intensity_step_detection/main_panel_widget/segmentation_widget.ui",
-        "src/napari_intensity_step_detection/main_panel_widget/walking_average_widget.ui",
+        "src/napari_intensity_step_detection/main_panel_widget/quick_analysis_widget.py",
+        "src/napari_intensity_step_detection/main_panel_widget/quick_annotation_widget.py",
         "src/napari_intensity_step_detection/main_panel_widget/quick_annotation_widget.ui",
+        "src/napari_intensity_step_detection/main_panel_widget/segmentation_widget.py",
+        "src/napari_intensity_step_detection/main_panel_widget/segmentation_widget.ui",
+        "src/napari_intensity_step_detection/main_panel_widget/tracking_widget.py",
         "src/napari_intensity_step_detection/main_panel_widget/tracking_widget.ui",
+        "src/napari_intensity_step_detection/main_panel_widget/walking_average_widget.py",
+        "src/napari_intensity_step_detection/main_panel_widget/walking_average_widget.ui",
+
         "src/napari_intensity_step_detection/step_analysis_widget/__init__.py",
         "src/napari_intensity_step_detection/step_analysis_widget/stepanalysis_widget.py",
         "src/napari_intensity_step_detection/filter_widget/__init__.py",
@@ -27,5 +36,7 @@
         "src/napari_intensity_step_detection/_plugin_widget.py",
         "__main__.py",
         "src/napari_intensity_step_detection/napari.yaml"
+
+
     ]
 }

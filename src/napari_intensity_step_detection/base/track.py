@@ -1,14 +1,21 @@
+from qtpy.QtCore import Qt, QModelIndex, QAbstractTableModel, QVariant, Signal, QObject, QSortFilterProxyModel
+from qtpy.QtGui import QStandardItemModel, QStandardItem
 import numpy as np
 import pandas as pd
 from napari_intensity_step_detection import utils
 from napari_intensity_step_detection.utils import FindSteps
 
 
-def pd_to_tracks(df: pd.DataFrame, is_3d=False, delta=1, ignore_reagion=None):
+def pd_to_tracks(df: pd.DataFrame, is_3d=False, delta=1, min_length=5, step_detection=False, ignore_reagion=None, progress=None):
     tg = df.groupby('track_id', as_index=False, group_keys=True, dropna=True)
     tracks = []
+    if progress is not None:
+        tg = progress(tg, desc="Creating to tracks")
     for track_id, track in tg:
-        t = from_pd_track(track, delta=delta, is_3d=is_3d)
+        t = from_pd_track(track, delta=delta, is_3d=is_3d,
+                          step_detection=step_detection)
+        if t.length < min_length:
+            continue
         if ignore_reagion is not None:
             if t.is_in_bbox(ignore_reagion[0], ignore_reagion[1]):
                 continue
@@ -21,9 +28,15 @@ def tracks_to_pd(tracks):
     return df
 
 
-def tracks_to_napari_tracks(tracks):
+def filter_tracks_by_id(tracks, track_ids):
+    return [t for t in tracks if t.track_id in track_ids]
+
+
+def tracks_to_napari_tracks(tracks, progress=None):
     napari_tracks = None
-    properties = []
+    properties_columns = tracks[0].properties_columns
+    if progress is not None:
+        tracks = progress(tracks, desc="Converting tracks to napari tracks")
     for track in tracks:
         if napari_tracks is not None:
             napari_tracks = np.concatenate(
@@ -31,18 +44,29 @@ def tracks_to_napari_tracks(tracks):
         else:
             napari_tracks = track.napari_points
         # napari_tracks.append(track.points)
-        properties.append(track.properties)
+
+    properties = {}
+    tracks_df = tracks_to_pd(tracks)
+    _tracks_df = tracks_df[properties_columns]
+    properties = _tracks_df.to_dict()
+    properties = dict(
+        map(lambda kv: (kv[0], np.array(list(kv[1].values()))), properties.items()))
+
     return np.array(napari_tracks), properties
 
 
-def tracks_to_tracks_meta(tracks):
+def tracks_to_tracks_meta(tracks, progress=None):
     tracks_meta = []
+    if progress is not None:
+        tracks = progress(tracks, desc="Creating tracks meta data")
     for track in tracks:
         tracks_meta.append(track.meta())
-    return tracks_meta
+
+    meta_pd = pd.DataFrame(tracks_meta)
+    return meta_pd
 
 
-def from_pd_track(df, is_3d=False, delta=1):
+def from_pd_track(df, is_3d=False, step_detection=False, delta=1):
     if 'frame' not in df.columns:
         raise ValueError("DataFrame does not have frame column")
     if 'track_id' not in df.columns:
@@ -55,7 +79,7 @@ def from_pd_track(df, is_3d=False, delta=1):
         if not all(x in df.columns for x in ['x', 'y', 'z']):
             raise ValueError("DataFrame does not have x, y and z column")
 
-    t = Track(delta=delta, is_3d=is_3d)
+    t = Track(delta=delta, is_3d=is_3d, is_step_detection=step_detection)
     t.dataframe = df.sort_values(by=['frame'])
     if is_3d:
         t.points = df[['z', 'y', 'x']].to_numpy()
@@ -70,31 +94,31 @@ def from_pd_track(df, is_3d=False, delta=1):
 
     t.frames = df['frame'].to_numpy()
     t.track_id = df['track_id'].to_numpy()[0]
-    _coloumns = list(df.columns)
-    _coloumns.remove('x')
-    _coloumns.remove('y')
+    _columns = list(df.columns)
+    _columns.remove('x')
+    _columns.remove('y')
     if t.is_3d:
-        _coloumns.remove('z')
-    _coloumns.remove('frame')
-    _coloumns.remove('track_id')
-    _properties = df[_coloumns].to_dict()
+        _columns.remove('z')
+    _columns.remove('frame')
+    _columns.remove('track_id')
+    t.properties_columns = _columns
 
     # convert dict of dict to dict of np.array
-    t.properties = dict(
-        map(lambda kv: (kv[0], np.array(list(kv[1].values()))), _properties.items()))
+    # t.properties = dict(
+    #     map(lambda kv: (kv[0], np.array(list(kv[1].values()))), _properties.items()))
 
     # Load additional attributes if provided
-    for col in _coloumns:
+    for col in _columns:
         setattr(t, col, df[col].to_numpy())
 
-    # t.length = len(t.points)
-    # t.mean_intensity = np.nanmean(t.intensity())
+    t.length = len(t.points)
+    t.mean_intensity = np.nanmean(t.intensity())
 
     return t
 
 
 class Track():
-    def __init__(self, delta=1, is_3d=False):
+    def __init__(self, delta=1, is_3d=False, is_step_detection=False):
         self.is_3d = is_3d
         self.dataframe = None
         self.points = None
@@ -118,8 +142,8 @@ class Track():
         if delta == self.delta:
             return
         self.delta = delta
-        self.calculate_msd = None
-        self.msd_fit = None
+        self.msd = None
+        self._msd_fit_op = None
 
     def calculate_msd(self, limit=100):
         if (self.msd is not None) and (limit <= self.msd_limit):
@@ -158,7 +182,7 @@ class Track():
         return self._msd_fit_op
 
     def track_velocity(self):
-        return self.length() / (self.frames[-1] * self.delta)
+        return self.length / (self.frames[-1] * self.delta)
 
     def intensity(self, category='intensity_mean'):
         if not hasattr(self, category):
@@ -183,11 +207,77 @@ class Track():
     def meta(self):
         meta = {}
         meta['track_id'] = self.track_id
-        meta['length'] = len(self.points)
-        # meta['msd_fit_alpha'] = self.msd_fit()[0]
-        meta['mean_intensity'] = np.nanmean(self.intensity())
+        meta['length'] = self.length
+        meta['msd_fit_alpha'] = self.msd_fit()[0]
+        meta['mean_intensity'] = self.mean_intensity
         # meta['number_of_steps'] = self.number_of_steps()
         return meta
 
     def __repr__(self) -> str:
-        return f"Track(track_id={self.track_id}, length={self.length()}"
+        return f"Track(track_id={self.track_id}, length={self.length}"
+
+    def __str__(self) -> str:
+        return self.__repr__()
+
+
+class TrackMetaModel(QStandardItemModel):
+    def __init__(self, tracks_meta=pd.DataFrame, track_id_column='track_id', parent=None):
+        super().__init__(parent)
+        self.track_id_column = track_id_column
+        self.tracks_meta = tracks_meta
+        self.setHorizontalHeaderLabels(list(self.tracks_meta.columns))
+        self.setup()
+
+    def setup(self):
+        for i, row in self.tracks_meta.iterrows():
+            self.appendRow([QStandardItem(str(v)) for v in row])
+
+
+class TrackMetaProxyModel(QSortFilterProxyModel):
+    def __init__(self,  parent: QObject = None):
+        super(TrackMetaProxyModel, self).__init__(parent)
+        self.properties = {}
+        self.sourceModelChanged.connect(self.setup_prperties)
+        self.setDynamicSortFilter(True)
+
+    def filterAcceptsRow(self, source_row: int, source_parent: QModelIndex):
+        if (not hasattr(self, 'properties')) or (not self.properties):
+            return True
+        conditions = []
+        for i, (k, v) in enumerate(self.properties.items()):
+            if str(k).strip() == self.tracks_meta_model.track_id_column.strip():
+                continue
+            # print(i, k, v)
+            index = self.sourceModel().index(source_row, i+1, source_parent)
+            conditions.append((float(self.sourceModel().data(index)) >= v['min'])
+                              and (float(self.sourceModel().data(index)) <= v['max']))
+
+        # AND LOGIC
+        if all(conditions):
+            return True
+        return False
+
+    def headerData(self, section: int, orientation: Qt.Orientation, role: int):
+        return self.sourceModel().headerData(section, orientation, role)
+
+    def setTrackMetaModel(self, model: TrackMetaModel):
+        self.tracks_meta_model = model
+        self.setSourceModel(model)
+
+    def setup_prperties(self):
+        for property in self.tracks_meta_model.tracks_meta.columns:
+            property = str(property).strip()
+            if property == self.tracks_meta_model.track_id_column.strip():
+                continue
+            _min = self.tracks_meta_model.tracks_meta[property].to_numpy(
+            ).min()
+            _max = self.tracks_meta_model.tracks_meta[property].to_numpy(
+            ).max()
+            self.properties[property] = {
+                'min': float(_min), 'max': float(_max)}
+
+    def property_filter_updated(self, property_name, vrange):
+        print(f"property_filter_updated {property_name}, {vrange}")
+        self.properties[property_name] = {'min': vrange[0], 'max': vrange[1]}
+        # self.filterUpdated.emit(property_name, vrange)
+        self.invalidateFilter()

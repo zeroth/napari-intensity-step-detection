@@ -99,16 +99,15 @@ class GeneralPlot(BaseMPLWidget):
         self.axes.hist(data['y'], bins=bins, edgecolor='black',
                        linewidth=0.5, color=self.color, label=self.label)
 
-    def draw_values(self, data):
-        print(data.keys())
+    def draw_values(self, data, color=None):
         if data['type'] == 'scatter':
-            self.plot_scatter(data)
+            self.plot_scatter(data, _color=color)
         elif data['type'] == 'line':
-            self.plot_line(data)
+            self.plot_line(data, _color=color)
         elif data['type'] == 'histline':
-            self.plot_histline(data)
+            self.plot_histline(data, _color=color)
         elif data['type'] == 'histogram':
-            self.plot_hist(data)
+            self.plot_hist(data, _color=color)
         else:
             raise Exception(f"Unknown plot type: {data['type']}")
 
@@ -123,8 +122,8 @@ class GeneralPlot(BaseMPLWidget):
             self.axes.set_ylabel(y_label)
 
         if isinstance(self.data['data'], list):
-            for data in self.data['data']:
-                self.draw_values(data)
+            for i, data in enumerate(self.data['data']):
+                self.draw_values(data, color=colors[i % len(colors)])
         else:
             self.draw_values(self.data['data'])
 

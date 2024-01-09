@@ -6,11 +6,11 @@ from pathlib import Path
 from pprint import pprint
 import logging
 
-logging.basicConfig(filename="nisd.log",
-                    filemode='a',
-                    format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
-                    datefmt='%H:%M:%S',
-                    level=logging.CRITICAL)
+# logging.basicConfig(filename="nisd.log",
+#                     filemode='a',
+#                     format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
+#                     datefmt='%H:%M:%S',
+#                     level=logging.CRITICAL)
 
 
 def build():
@@ -43,4 +43,5 @@ if __name__ == "__main__":
     try:
         launch()
     except Exception as e:
-        logging.exception(e)
+        print(e)
+        # logging.exception(e)
