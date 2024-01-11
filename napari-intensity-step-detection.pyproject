@@ -1,9 +1,10 @@
 {
     "files": [
-        "src/napari_intensity_step_detection/base_widgets/__init__.py",
-        "src/napari_intensity_step_detection/base_widgets/base_widget.py",
-        "src/napari_intensity_step_detection/base_widgets/plots.py",
-        "src/napari_intensity_step_detection/base_widgets/sliders.py",
+        "src/napari_intensity_step_detection/base/__init__.py",
+        "src/napari_intensity_step_detection/base/base_widget.py",
+        "src/napari_intensity_step_detection/base/plots.py",
+        "src/napari_intensity_step_detection/base/sliders.py",
+        "src/napari_intensity_step_detection/base/base_widget.ui",
         "src/napari_intensity_step_detection/tracking_widget/tracking_widget.py",
         "src/napari_intensity_step_detection/tracking_widget/__init__.py",
 
@@ -28,7 +29,7 @@
         "src/napari_intensity_step_detection/filter_widget/property_filter_widget.py",
         "src/napari_intensity_step_detection/ui/h_range_slider.ui",
         "src/napari_intensity_step_detection/ui/filter_list_item_widget.ui",
-        "src/napari_intensity_step_detection/ui/base_widget.ui",
+
         "src/napari_intensity_step_detection/ui/step_analysis_widget.ui",
         "src/napari_intensity_step_detection/ui/step_analysis_result_widget.ui",
         "src/napari_intensity_step_detection/ui/histogram_bin_control_widget.ui",

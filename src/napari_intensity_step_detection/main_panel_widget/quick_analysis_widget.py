@@ -21,6 +21,7 @@ class QuickAnalysisWidget(QWidget):
         _track = {
             'x_label': 'X',
             'y_label': 'Y',
+            'title': 'Track Plot (X, Y)',
             'data': {
                 'y': track.points[:, 0],
                 'x': track.points[:, 1],
@@ -31,10 +32,12 @@ class QuickAnalysisWidget(QWidget):
 
         y = track.msd
         x = np.arange(0, len(y)) * track.delta
-        alfa, _y = track._msd_fit_op
+        alpha, _y = track.msd_fit_op
+
         _msd = {
             'x_label': 'Time (s)',
             'y_label': 'MSD',
+            'title': f'MSD fit α: {alpha:.5f}/s',
             'data': [{
                 'x': x,
                 'y': _y,

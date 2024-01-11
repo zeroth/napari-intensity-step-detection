@@ -1,7 +1,9 @@
 from pathlib import Path
 from napari.utils import progress
-from qtpy.QtWidgets import QWidget, QVBoxLayout, QTableView, QLabel, QTabWidget
+import numpy as np
+from qtpy.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTableView, QLabel, QTabWidget
 from napari_intensity_step_detection.base.plots import Histogram
+from .general_plot import GeneralPlot
 from napari_intensity_step_detection.base.track import Track, pd_to_tracks, tracks_to_pd, tracks_to_napari_tracks, tracks_to_tracks_meta, filter_tracks_by_id, TrackMetaModel, TrackMetaProxyModel
 from napari_intensity_step_detection import utils
 from napari_intensity_step_detection.utils import TrackLabels as Labels
@@ -61,28 +63,58 @@ class TrackFilterControls(QWidget):
                 (self.database[property].min(), self.database[property].max()))
 
 
-class TrackFilter(QWidget):
+class TracksOverview(QWidget):
     def __init__(self, parent: QWidget = None):
         super().__init__(parent)
-        self.setLayout(QVBoxLayout())
-        self.plot = Histogram()
-        self.layout().addWidget(self.plot)
+        self.setLayout(QHBoxLayout())
+        self.hitogram = GeneralPlot(title="Tracks Overview")
+        self.layout().addWidget(self.hitogram)
+        self.motility = GeneralPlot(title="Tracks Motility")
+        self.layout().addWidget(self.motility)
 
     def set_data_source(self, source):
         self.dataframe = source
-        self.draw()
+        self.create_histogram()
+        self.create_motility()
 
-    def draw(self):
-        self.plot.clear()
+    def create_histogram(self):
+        self.hitogram.clear()
         data = {}
+        properties = []
 
         for property in self.dataframe.columns:
             property = str(property).strip()
             if property == 'track_id':
                 continue
-            data[property] = self.dataframe[property].to_numpy()
-        self.plot.setData(data=data, title="Filtered View")
-        self.plot.draw()
+            y = self.dataframe[property].to_numpy()
+            y = y[~np.isnan(y)]
+            _property = {
+                'type': 'histogram',
+                'y': y,
+                'label': property,
+            }
+            # data[property] = self.dataframe[property].to_numpy()
+            properties.append(_property)
+        data = {
+            'data': properties
+        }
+        self.hitogram.setData(data=data)
+        self.hitogram.draw()
+
+    def create_motility(self):
+        self.motility.clear()
+        all_alpha = self.dataframe['msd_fit_alpha'].to_numpy()
+        all_alpha = all_alpha[~np.isnan(all_alpha)]
+        data = {
+            'x_label': 'α',
+            'y_label': 'Number of Track Segments',
+            'data': {
+                'y': all_alpha,
+                'type': 'histline'
+            }
+        }
+        self.motility.setData(data=data)
+        self.motility.draw()
 
 
 def _get_shape_layer_data(shape_layer):
@@ -135,15 +167,15 @@ class Tracking(QWidget):
         self.trackingView.layout().addWidget(self.trackingTabs)
 
         # setup filter view
-        self.filterView = QWidget()
-        self.filterView.setLayout(QVBoxLayout())
-        self.trackFilter = TrackFilter()
-        self.filterView.layout().addWidget(self.trackFilter)
+        self.filterOverView = QWidget()
+        self.filterOverView.setLayout(QVBoxLayout())
+        self.tracksOverview = TracksOverview()
+        self.filterOverView.layout().addWidget(self.tracksOverview)
 
         # setup tracking controls
         self.controls = TrackFilterControls()
-        self.filterView.layout().addWidget(self.controls)
-        self.trackingTabs.addTab(self.filterView, "Filter")
+        self.filterOverView.layout().addWidget(self.controls)
+        self.trackingTabs.addTab(self.filterOverView, "Filter")
 
         # setup quick analysis view
         self.quickAnalysisView = QuickAnalysisWidget(self.base)
@@ -154,7 +186,14 @@ class Tracking(QWidget):
                 warnings.warn("No Image or Lable selected!")
                 notifications.show_warning("No Image or Lable selected!")
                 return
-            self.track()
+            try:
+                self.btnTrack.setEnabled(False)
+                self.track()
+            except Exception as e:
+                notifications.show_error(str(e))
+                raise e
+            finally:
+                self.btnTrack.setEnabled(True)
 
         self.btnTrack.clicked.connect(_start_tracking)
 
@@ -183,7 +222,7 @@ class Tracking(QWidget):
                                       "filter_meta": filtered_tracks_meta,
                                       "filter_tracks": filtered_tracks,
                                       'tracking_params': current_track_layer.metadata['tracking_params']})
-        self.trackFilter.set_data_source(filtered_tracks_meta)
+        self.tracksOverview.set_data_source(filtered_tracks_meta)
 
     def track(self):
         image_layer = self.base.get_layer('Image')
@@ -212,7 +251,6 @@ class Tracking(QWidget):
 
         pbr.update(100)
         pbr.close()
-
         # update napari viewer
         utils.add_to_viewer(self.base.napari_viewer, f"{image_layer.name} tracks", napari_tracks, "tracks",
                             properties=properties,
@@ -228,7 +266,7 @@ class Tracking(QWidget):
                             )
 
         # update filter view
-        self.trackFilter.set_data_source(track_meta)
+        self.tracksOverview.set_data_source(track_meta)
         self.controls.set_properties(track_meta)
         self.controls.propertyUpdated.connect(self.filter_tracks)
 
@@ -247,6 +285,11 @@ class Tracking(QWidget):
         self.base.updated.emit()
 
     def track_selection_changed(self, current: QModelIndex, previous: QModelIndex):
+        current_track_layer = self.base.get_layer('Track')
+        if current_track_layer is None:
+            warnings.warn("No Track selected!")
+            notifications.show_warning("No Track selected!")
+            return
         track_id_index = self.track_meta_model_proxy.index(
             current.row(), 0, current.parent())
         track_id = self.track_meta_model_proxy.data(
@@ -256,3 +299,6 @@ class Tracking(QWidget):
 
         track = filter_tracks_by_id(self.tracks, [track_id])[0]
         self.quickAnalysisView.set_traget_track(track)
+
+        utils.add_to_viewer(self.base.napari_viewer, "Selected Track", track.napari_points, "tracks",
+                            scale=current_track_layer.scale)

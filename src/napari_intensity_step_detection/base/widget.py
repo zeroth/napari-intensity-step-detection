@@ -14,8 +14,7 @@ class NLayerWidget(QWidget):
         super().__init__(parent)
         # self.viewer = napari_viewer
         self.napari_viewer = napari_viewer
-        UI_FILE = Path(__file__).resolve().parent.parent.joinpath(
-            'ui', 'base_widget.ui')
+        UI_FILE = Path(__file__).resolve().parent.joinpath('base_widget.ui')
         self.load_ui(UI_FILE)
 
         self.layersArea = QWidget()
@@ -46,7 +45,7 @@ class NLayerWidget(QWidget):
             self.napari_viewer.layers.events.inserted.connect(_inserted)
             self.napari_viewer.layers.events.changed.connect(_inserted)
             self.napari_viewer.layers.events.removed.connect(_inserted)
-        
+
         self.widget.setLayout(QVBoxLayout())
 
     def load_ui(self, path):

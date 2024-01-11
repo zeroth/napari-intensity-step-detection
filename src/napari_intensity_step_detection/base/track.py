@@ -133,7 +133,7 @@ class Track():
         self.track_id = None
         self.intensity_mean = None
         self.velocity = None
-        self._msd_fit_op = None
+        self.msd_fit_op = None
 
     def to_pd(self):
         return self.dataframe
@@ -143,7 +143,7 @@ class Track():
             return
         self.delta = delta
         self.msd = None
-        self._msd_fit_op = None
+        self.msd_fit_op = None
 
     def calculate_msd(self, limit=100):
         if (self.msd is not None) and (limit <= self.msd_limit):
@@ -172,14 +172,14 @@ class Track():
         return self.msd
 
     def msd_fit(self):
-        if self._msd_fit_op is not None:
-            return self._msd_fit_op
+        if self.msd_fit_op is not None:
+            return self.msd_fit_op
         _msd = self.calculate_msd(self.msd_limit)
         if _msd is None:
-            return [0, [0]]
-        self._msd_fit_op = utils.basic_msd_fit(
+            return [None, None]
+        self.msd_fit_op = utils.basic_msd_fit(
             self.calculate_msd(self.msd_limit), delta=self.delta, limit=self.msd_limit)
-        return self._msd_fit_op
+        return self.msd_fit_op
 
     def track_velocity(self):
         return self.length / (self.frames[-1] * self.delta)
@@ -229,8 +229,19 @@ class TrackMetaModel(QStandardItemModel):
         self.setup()
 
     def setup(self):
+        # numpy data type reference https://numpy.org/doc/stable/reference/generated/numpy.dtype.kind.html#numpy.dtype.kind
+        types = self.tracks_meta.dtypes.values
         for i, row in self.tracks_meta.iterrows():
-            self.appendRow([QStandardItem(str(v)) for v in row])
+            r = []
+            for j, v in enumerate(row):
+                if types[j].kind == 'f':
+                    r.append(QStandardItem("{:.4f}".format(v)))
+                elif types[j].kind == 'i' or types[j].kind == 'u':
+                    r.append(QStandardItem(str(int(v))))
+                else:
+                    r.append(QStandardItem(str(v)))
+            self.appendRow(r)
+            # self.appendRow([QStandardItem(str(v)) for v in row])
 
 
 class TrackMetaProxyModel(QSortFilterProxyModel):
@@ -256,6 +267,11 @@ class TrackMetaProxyModel(QSortFilterProxyModel):
         if all(conditions):
             return True
         return False
+
+    def lessThan(self, source_left, source_right):
+        leftData = self.sourceModel().data(source_left)
+        rightData = self.sourceModel().data(source_right)
+        return float(leftData) < float(rightData)
 
     def headerData(self, section: int, orientation: Qt.Orientation, role: int):
         return self.sourceModel().headerData(section, orientation, role)

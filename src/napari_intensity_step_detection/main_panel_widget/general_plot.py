@@ -1,24 +1,30 @@
 from napari_intensity_step_detection.base.plots import Histogram, BaseMPLWidget, colors
 from typing import Optional
-from qtpy.QtWidgets import QWidget, QVBoxLayout, QGridLayout, QScrollArea, QLabel
+from qtpy.QtWidgets import QWidget, QHBoxLayout, QLineEdit, QVBoxLayout, QGridLayout, QScrollArea, QLabel
 from qtpy.QtCore import Qt, Signal
-from qtpy.QtGui import QDoubleValidator
+from qtpy.QtGui import QDoubleValidator, QIntValidator
 from pathlib import Path
 import numpy as np
 from qtpy import uic
 from napari_intensity_step_detection import utils
 
 
-class DoubleBinSize(QWidget):
+class BinSizeControl(QWidget):
     editingFinished = Signal()
 
-    def __init__(self, parent=None):
+    def __init__(self, precision='double', parent=None):
         super().__init__(parent)
-        UI_FILE = Path(__file__).resolve().parent.parent.joinpath(
-            'ui', 'histogram_bin_control_widget.ui')
-        self.load_ui(UI_FILE)
+        self.setLayout(QVBoxLayout())
+        self.layout().setContentsMargins(0, 0, 0, 0)
+        self.lbTitle = QLabel()
+        self.layout().addWidget(self.lbTitle)
+        self.leControl = QLineEdit()
+        self.layout().addWidget(self.leControl)
         self.leControl.editingFinished.connect(self.editingFinished)
-        self.leControl.setValidator(QDoubleValidator())
+        if precision == 'double':
+            self.leControl.setValidator(QDoubleValidator())
+        else:
+            self.leControl.setValidator(QIntValidator())
 
     def setTitle(self, text):
         self.lbTitle.setText(text)
@@ -40,7 +46,7 @@ class GeneralPlot(BaseMPLWidget):
     def __init__(
         self,
         title,
-        data,
+        data=None,
         parent: Optional[QWidget] = None,
     ):
         super().__init__(parent=parent)
@@ -54,7 +60,7 @@ class GeneralPlot(BaseMPLWidget):
     def add_bin_size_control(self):
         if hasattr(self, "control"):
             return
-        self.control = DoubleBinSize()
+        self.control = BinSizeControl(precision='double')
         self.toolbar.addSeparator()
         self.control.setTitle("Bin Size")
         self.control.setValue(0.5)
@@ -94,10 +100,12 @@ class GeneralPlot(BaseMPLWidget):
 
     def plot_hist(self, data, _color=None):
         self.add_bin_size_control()
+        label = data.get('label', None)
         hist, bins, binsize = utils.histogram(
             data['y'], self.control.value())
         self.axes.hist(data['y'], bins=bins, edgecolor='black',
-                       linewidth=0.5, color=self.color, label=self.label)
+                       linewidth=0.5, color=_color, label=label)
+        self.axes.legend()
 
     def draw_values(self, data, color=None):
         if data['type'] == 'scatter':
@@ -116,6 +124,10 @@ class GeneralPlot(BaseMPLWidget):
 
         x_label = self.data.get('x_label', None)
         y_label = self.data.get('y_label', None)
+        title = self.data.get('title') if self.data.get(
+            'title', None) is not None else self.title
+        if title is not None:
+            self.axes.set_title(title)
         if x_label is not None:
             self.axes.set_xlabel(x_label)
         if y_label is not None:
