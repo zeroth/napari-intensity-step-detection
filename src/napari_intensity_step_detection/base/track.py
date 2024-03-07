@@ -6,6 +6,22 @@ from napari_intensity_step_detection import utils
 from napari_intensity_step_detection.utils import FindSteps
 
 
+def track_length_binning(tracks, bin_size=10, bin_column='length'):
+    tracks_df = tracks_to_pd(tracks)
+    bins = np.arange(0, tracks_df[bin_column].max()+bin_size, bin_size)
+    tracks_df['bin'] = pd.cut(tracks_df[bin_column], bins=bins)
+    tracks_df['bin'] = tracks_df['bin'].astype(str)
+    tracks_df['bin'] = tracks_df['bin'].apply(lambda x: x.replace('(', '['))
+    tracks_g = tracks_df.groupby('bin')
+    group_tracks = {}
+    for name, g in tracks_g:
+        group_tracks[name] = filter_tracks_by_id(
+            tracks, g['track_id'].to_numpy())
+    #     print(name, len(g['track_id']))
+    print(group_tracks)
+    # return tracks
+
+
 def pd_to_tracks(df: pd.DataFrame, is_3d=False, delta=1, min_length=5, step_detection=False, ignore_reagion=None, progress=None):
     tg = df.groupby('track_id', as_index=False, group_keys=True, dropna=True)
     tracks = []
@@ -88,10 +104,6 @@ def from_pd_track(df, is_3d=False, step_detection=False, delta=1):
         t.points = df[['y', 'x']].to_numpy()
         t.napari_points = df[['track_id', 'frame', 'y', 'x']].to_numpy()
 
-    if t.is_3d:
-        t.points = np.concatenate(
-            (t.points, df[['z']].to_numpy()), axis=1)
-
     t.frames = df['frame'].to_numpy()
     t.track_id = df['track_id'].to_numpy()[0]
     _columns = list(df.columns)
@@ -128,10 +140,11 @@ class Track():
         self.msd = None
         self.msd_limit = 100
         self.properties = None
+        self.subpixel_bias = None
+        self.length = None
 
         # meta attributes
         self.track_id = None
-        self.intensity_mean = None
         self.velocity = None
         self.msd_fit_op = None
 
@@ -146,8 +159,9 @@ class Track():
         self.msd_fit_op = None
 
     def calculate_msd(self, limit=100):
+        limit = min(limit, self.length - 1)
         if (self.msd is not None) and (limit <= self.msd_limit):
-            return self.msd  # return if already calculated
+            return self.msd[:limit]  # return if already calculated
 
         self.msd_limit = limit
         pos = self.points
@@ -158,8 +172,7 @@ class Track():
             pos_columns.append('z')
         result_columns = ['<{}>'.format(p) for p in pos_columns] + \
             ['<{}^2>'.format(p) for p in pos_columns]
-        limit = min(limit, len(pos) - 1)
-        self.msd_limit = limit
+
         lagtimes = np.arange(1, limit+1)
         msd_list = []
         for lt in lagtimes:
@@ -171,15 +184,23 @@ class Track():
         self.msd = result['msd'].to_numpy()
         return self.msd
 
-    def msd_fit(self):
+    def msd_fit(self, limit=100):
         if self.msd_fit_op is not None:
             return self.msd_fit_op
-        _msd = self.calculate_msd(self.msd_limit)
+        _msd = self.calculate_msd(limit=limit)
         if _msd is None:
             return [None, None]
         self.msd_fit_op = utils.basic_msd_fit(
-            self.calculate_msd(self.msd_limit), delta=self.delta, limit=self.msd_limit)
+            _msd, delta=self.delta, limit=limit)
         return self.msd_fit_op
+
+    def position_to_displacement(self):
+        pos = self.points
+        diff = pos[1:] - pos[:-1]
+        displacement = diff**2
+        displacement = np.sum(displacement, axis=1)
+        displacement = np.sqrt(displacement)
+        return np.insert(displacement, 0, 0)
 
     def track_velocity(self):
         return self.length / (self.frames[-1] * self.delta)
@@ -190,7 +211,7 @@ class Track():
         return getattr(self, category)
 
     def step_detection(self, window=20, threshold=0.5):
-        return FindSteps(self.intensity, window=window, threshold=threshold)
+        return FindSteps(self.intensity(), window=window, threshold=threshold)
 
     def number_of_steps(self, window=20, threshold=0.5):
         return len(self.step_detection(window=window, threshold=threshold)[0])
@@ -218,6 +239,15 @@ class Track():
 
     def __str__(self) -> str:
         return self.__repr__()
+
+    def to_json(self):
+        return {
+            'track_id': self.track_id,
+            'length': self.length,
+            'mean_intensity': self.mean_intensity,
+            'msd_fit_alpha': self.msd_fit()[0],
+            'number_of_steps': self.number_of_steps()
+        }
 
 
 class TrackMetaModel(QStandardItemModel):
@@ -293,7 +323,7 @@ class TrackMetaProxyModel(QSortFilterProxyModel):
                 'min': float(_min), 'max': float(_max)}
 
     def property_filter_updated(self, property_name, vrange):
-        print(f"property_filter_updated {property_name}, {vrange}")
+        # print(f"property_filter_updated {property_name}, {vrange}")
         self.properties[property_name] = {'min': vrange[0], 'max': vrange[1]}
         # self.filterUpdated.emit(property_name, vrange)
         self.invalidateFilter()

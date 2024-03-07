@@ -12,7 +12,8 @@ class _h_slider_ui(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        sizePolicy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.MinimumExpanding)
+        sizePolicy = QSizePolicy(
+            QSizePolicy.Preferred, QSizePolicy.MinimumExpanding)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(parent.sizePolicy().hasHeightForWidth())
@@ -25,6 +26,7 @@ class _h_slider_ui(QWidget):
 
         self.setLayout(QVBoxLayout())
         self.group = QGroupBox()
+        self.group.setFlat(True)
         self.layout().addWidget(self.group)
         self.layout().setContentsMargins(0, 0, 0, 0)
         self.layout().setSpacing(2)
@@ -35,9 +37,10 @@ class _h_slider_ui(QWidget):
         lmsizePolicy = QSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         lmsizePolicy.setHorizontalStretch(0)
         lmsizePolicy.setVerticalStretch(0)
-        lmsizePolicy.setHeightForWidth(self.leMin.sizePolicy().hasHeightForWidth())
+        lmsizePolicy.setHeightForWidth(
+            self.leMin.sizePolicy().hasHeightForWidth())
         self.leMin.setSizePolicy(lmsizePolicy)
-        self.leMin.setMaximumSize(QSize(30, 16777215))
+        self.leMin.setMaximumWidth(30)
         self.leMin.setFocusPolicy(Qt.ClickFocus)
         self.leMin.setFrame(False)
 
@@ -45,9 +48,10 @@ class _h_slider_ui(QWidget):
         lemsizePolicy = QSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         lemsizePolicy.setHorizontalStretch(0)
         lemsizePolicy.setVerticalStretch(0)
-        lemsizePolicy.setHeightForWidth(self.leMax.sizePolicy().hasHeightForWidth())
+        lemsizePolicy.setHeightForWidth(
+            self.leMax.sizePolicy().hasHeightForWidth())
         self.leMax.setSizePolicy(lemsizePolicy)
-        self.leMax.setMaximumSize(QSize(30, 16777215))
+        self.leMax.setMaximumWidth(30)
         self.leMax.setFocusPolicy(Qt.ClickFocus)
         self.leMax.setFrame(False)
 
@@ -127,6 +131,8 @@ class HRangeSlider(QWidget):
         layout = QHBoxLayout()
         self.ui = _h_slider_ui(self)
         layout.addWidget(self.ui)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(2)
         self.setLayout(layout)
         self.setTracking(False)
         self.ui.valueChanged.connect(self.valueChanged)

@@ -18,12 +18,13 @@ class PluginWidget(QWidget):
         self.segmentation_widget = MainPanel(napari_viewer=napari_viewer)
         self.tabs.addTab(self.segmentation_widget, "Main")
 
-        self.tracking_analysis_widget = TrackAnalysis(napari_viewer=napari_viewer)
-        self.tabs.addTab(self.tracking_analysis_widget, "Track Analysis")
+        # self.tracking_analysis_widget = TrackAnalysis(napari_viewer=napari_viewer)
+        # self.tabs.addTab(self.tracking_analysis_widget, "Track Analysis")
 
         # setup the top left Action Menu
         self.btn_save = QToolButton()
-        self.btn_save.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogSaveButton))
+        self.btn_save.setIcon(self.style().standardIcon(
+            QStyle.StandardPixmap.SP_DialogSaveButton))
         self.btn_save.setMinimumWidth(20)
         self.btn_save.setMinimumHeight(20)
 
@@ -38,7 +39,8 @@ class PluginWidget(QWidget):
         self.btn_save.clicked.connect(_save_clicked)
 
         self.btn_open = QToolButton()
-        self.btn_open.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogOpenButton))
+        self.btn_open.setIcon(self.style().standardIcon(
+            QStyle.StandardPixmap.SP_DialogOpenButton))
         self.btn_open.setMinimumWidth(20)
         self.btn_open.setMinimumHeight(20)
 
@@ -63,7 +65,7 @@ class PluginWidget(QWidget):
         corner_widget.layout().addWidget(self.btn_open)
         corner_widget.setMinimumWidth(41)
         corner_widget.setMinimumHeight(21)
-        self.tabs.setCornerWidget(corner_widget, Qt.Corner.TopLeftCorner)
+        # self.tabs.setCornerWidget(corner_widget, Qt.Corner.TopLeftCorner)
 
 
 def _napari_main():

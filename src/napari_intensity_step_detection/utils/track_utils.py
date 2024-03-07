@@ -30,6 +30,20 @@ def get_frame_position_properties(frame: int, mask: np.ndarray, image: np.ndarra
         label_image=mask_label, intensity_image=image, properties=properties_keys)
     pf = pd.DataFrame(properties)
     pf['frame'] = frame
+    pos_columns = ['y', 'x']
+
+    if 'centroid-2' in pf.columns:
+        pf.rename(columns={'centroid-0': 'z',
+                  'centroid-1': 'y',
+                           'centroid-0': 'x'}, inplace=True)
+        pos_columns = ['z', 'y', 'x']
+    else:
+        pf.rename(columns={'centroid-0': 'y',
+                  'centroid-1': 'x'}, inplace=True)
+    pos_subpixel_columns = ['sub_{}'.format(p) for p in pos_columns]
+    pf[pos_subpixel_columns] = pf[pos_columns].applymap(lambda x: x % 1)
+    # _sub_pixel_bias = np.vectorize(lambda x: x % 1)
+    # t.subpixel_bias = _sub_pixel_bias(t.points)
 
     if result is None:
         result = pf
@@ -51,8 +65,7 @@ def get_statck_properties(masks: np.ndarray, images: np.ndarray, result: pd.Data
         mask = masks[i]
         result = get_frame_position_properties(
             frame=i, mask=mask, image=image, result=result, generate_label=generate_label)
-    result.rename(columns={'centroid-0': 'y',
-                  'centroid-1': 'x'}, inplace=True)
+
     return result
 
 

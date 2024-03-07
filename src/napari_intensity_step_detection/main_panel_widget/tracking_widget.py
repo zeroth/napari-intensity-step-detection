@@ -1,10 +1,10 @@
 from pathlib import Path
 from napari.utils import progress
 import numpy as np
-from qtpy.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTableView, QLabel, QTabWidget
+from qtpy.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTableView, QLabel, QTabWidget, QScrollArea, QGridLayout, QSplitter
 from napari_intensity_step_detection.base.plots import Histogram
 from .general_plot import GeneralPlot
-from napari_intensity_step_detection.base.track import Track, pd_to_tracks, tracks_to_pd, tracks_to_napari_tracks, tracks_to_tracks_meta, filter_tracks_by_id, TrackMetaModel, TrackMetaProxyModel
+from napari_intensity_step_detection.base.track import Track, pd_to_tracks, tracks_to_pd, tracks_to_napari_tracks, tracks_to_tracks_meta, filter_tracks_by_id, TrackMetaModel, TrackMetaProxyModel, track_length_binning
 from napari_intensity_step_detection import utils
 from napari_intensity_step_detection.utils import TrackLabels as Labels
 from napari_intensity_step_detection.base.sliders import HFilterSlider
@@ -12,6 +12,8 @@ from qtpy.QtCore import Signal, QItemSelectionModel, QModelIndex, Qt
 from napari.utils import notifications
 import warnings
 from napari_intensity_step_detection.main_panel_widget.quick_analysis_widget import QuickAnalysisWidget
+from datetime import datetime
+import pandas as pd
 
 
 class TrackList(QWidget):
@@ -67,15 +69,43 @@ class TracksOverview(QWidget):
     def __init__(self, parent: QWidget = None):
         super().__init__(parent)
         self.setLayout(QHBoxLayout())
+        self.layout().setContentsMargins(0, 0, 0, 0)
+        self.scroll_area = QScrollArea()
+        self.layout().addWidget(self.scroll_area)
+        self.scroll_area.setWidgetResizable(True)
+
+        self.scroll_area_content = QWidget()
+        self.scroll_area_content.setLayout(QGridLayout())
+        self.scroll_area_content.layout().setContentsMargins(0, 0, 0, 0)
+
         self.hitogram = GeneralPlot(title="Tracks Overview")
-        self.layout().addWidget(self.hitogram)
+        self.hitogram.setMinimumWidth(400)
+        self.hitogram.setMinimumHeight(400)
+        self.scroll_area_content.layout().addWidget(self.hitogram, 0, 0)
+
         self.motility = GeneralPlot(title="Tracks Motility")
-        self.layout().addWidget(self.motility)
+        self.motility.setMinimumWidth(400)
+        self.motility.setMinimumHeight(400)
+        self.scroll_area_content.layout().addWidget(self.motility, 0, 1)
+
+        self.length_hist = GeneralPlot(title="Tracks Length")
+        self.length_hist.setMinimumWidth(400)
+        self.length_hist.setMinimumHeight(400)
+        self.scroll_area_content.layout().addWidget(self.length_hist, 1, 0)
+
+        self.length_intensity_hist = GeneralPlot(title="Length vs Intensity")
+        self.length_intensity_hist.setMinimumWidth(400)
+        self.length_intensity_hist.setMinimumHeight(400)
+        self.scroll_area_content.layout().addWidget(self.length_intensity_hist, 1, 1)
+
+        self.scroll_area.setWidget(self.scroll_area_content)
 
     def set_data_source(self, source):
         self.dataframe = source
         self.create_histogram()
         self.create_motility()
+        self.create_length_hist()
+        self.create_length_intensity_hist()
 
     def create_histogram(self):
         self.hitogram.clear()
@@ -110,11 +140,44 @@ class TracksOverview(QWidget):
             'y_label': 'Number of Track Segments',
             'data': {
                 'y': all_alpha,
-                'type': 'histline'
+                'type': 'histline',
+                'range': [0.4, 1.2],
+                'legends': ['Confined α < 0.4', 'Diffusive 0.4 < α < 1.2', 'Directed α > 1.2']
             }
         }
         self.motility.setData(data=data)
         self.motility.draw()
+
+    def create_length_hist(self):
+        self.length_hist.clear()
+        all_length = self.dataframe['length'].to_numpy()
+        all_length = all_length[~np.isnan(all_length)]
+        data = {
+            'x_label': 'Track Length',
+            'y_label': 'Number of Tracks',
+            'data': {
+                'y': all_length,
+                'type': 'histogram',
+                'label': 'length'
+            }
+        }
+        self.length_hist.setData(data=data)
+        self.length_hist.draw()
+
+    def create_length_intensity_hist(self):
+        # lifetime vs intensity
+        length_intensity = {
+            'x_label': 'Track Length',
+            'y_label': 'Mean Intensity',
+            'data': {
+                'type': 'scatter',
+                'x': self.dataframe['length'].to_numpy(),
+                'y': self.dataframe['mean_intensity'].to_numpy(),
+                'label': 'length vs intensity'
+            }
+        }
+        self.length_intensity_hist.setData(data=length_intensity)
+        self.length_intensity_hist.draw()
 
 
 def _get_shape_layer_data(shape_layer):
@@ -161,24 +224,32 @@ class Tracking(QWidget):
             self.meta_table, name="Track Info", area="left")
 
         # setup tracking view
+        self.trackingView = QWidget()
         self.trackingView.setLayout(QVBoxLayout())
         self.trackingView.layout().setContentsMargins(0, 0, 0, 0)
         self.trackingTabs = QTabWidget()
         self.trackingView.layout().addWidget(self.trackingTabs)
+        self.base.add_tab(self.trackingView, "Tracking Analysis")
 
         # setup filter view
         self.filterOverView = QWidget()
+        self.filterOverViewSplitter = QSplitter(self.filterOverView)
+        self.filterOverViewSplitter.setOrientation(Qt.Vertical)
         self.filterOverView.setLayout(QVBoxLayout())
+        self.filterOverView.layout().setContentsMargins(0, 0, 0, 0)
+        self.filterOverView.layout().addWidget(self.filterOverViewSplitter)
+
         self.tracksOverview = TracksOverview()
-        self.filterOverView.layout().addWidget(self.tracksOverview)
+        self.filterOverViewSplitter.addWidget(self.tracksOverview)
 
         # setup tracking controls
         self.controls = TrackFilterControls()
-        self.filterOverView.layout().addWidget(self.controls)
+        self.filterOverViewSplitter.addWidget(self.controls)
         self.trackingTabs.addTab(self.filterOverView, "Filter")
 
         # setup quick analysis view
         self.quickAnalysisView = QuickAnalysisWidget(self.base)
+        self.quickAnalysisView.generateSteps.connect(self.generate_steps)
         self.trackingTabs.addTab(self.quickAnalysisView, "Quick Analysis")
 
         def _start_tracking():
@@ -245,9 +316,17 @@ class Tracking(QWidget):
         self.tracks = pd_to_tracks(tracked_df, is_3d=False,
                                    delta=self.sbDelta.value(), min_length=int(self.sbMinLength.value()), step_detection=self.cbStepDetection.isChecked(), ignore_reagion=bounds, progress=progress)
         tracks = self.tracks
+        print("Total Tracks", len(tracks))
         napari_tracks, properties = tracks_to_napari_tracks(
             tracks, progress=progress)
         track_meta = tracks_to_tracks_meta(tracks, progress=progress)
+
+        print('std_alpha', track_meta['msd_fit_alpha'].sem())
+        # date time for saving file
+        date_time = datetime.now().strftime("%Y%m%d-%H%M%S")
+        tracked_df.to_csv(f'{date_time}_tracked.csv')
+
+        track_meta.to_csv(f'{date_time}_tracked_meta.csv')
 
         pbr.update(100)
         pbr.close()
@@ -264,7 +343,6 @@ class Tracking(QWidget):
                                 }
                             }
                             )
-
         # update filter view
         self.tracksOverview.set_data_source(track_meta)
         self.controls.set_properties(track_meta)
@@ -302,3 +380,54 @@ class Tracking(QWidget):
 
         utils.add_to_viewer(self.base.napari_viewer, "Selected Track", track.napari_points, "tracks",
                             scale=current_track_layer.scale)
+
+    def generate_steps(self, threshold, window_size):
+        current_track_layer = self.base.get_layer('Track')
+        if current_track_layer is None:
+            warnings.warn("No Track selected!")
+            notifications.show_warning("No Track selected!")
+            return
+        track_meta = current_track_layer.metadata['filter_meta']
+        tracks = current_track_layer.metadata['filter_tracks']
+
+        steps_info = pd.DataFrame()
+        step_meta = []
+        for track in tracks:
+
+            # steptable, fitx, _ = utils.FindSteps(data=intensity,
+            #                                         window=window,
+            #                                         threshold=threshold)
+            steptable, fitx, _ = track.step_detection(
+                window=window_size, threshold=threshold)
+
+            # Detail step table
+            steps_df = pd.DataFrame(steptable,
+                                    columns=["step_index", "level_before", "level_after",
+                                             "step_height", "dwell_before", "dwell_after", "measured_error"])
+            steps_df['track_id'] = track.track_id
+            steps_info = pd.concat([steps_info, steps_df], ignore_index=True)
+
+            # single row description of step table
+            meta_row = []
+            # track id
+            meta_row.append(track.track_id)
+            # number of steps
+            meta_row.append(len(steptable))
+            # Negetive steps (steps going down)
+            meta_row.append(-len(steps_df[steps_df['step_height'] < 0]))
+            # Positive steps (steps going up or straight line)
+            meta_row.append(len(steps_df[steps_df['step_height'] >= 0]))
+            # Average step height
+            meta_row.append(steps_df['step_height'].mean())
+            # Max Intensity
+            meta_row.append(np.max(track.intensity()))
+            # Track length
+            meta_row.append(track.length)
+
+            step_meta.append(meta_row)
+
+        step_meta_df = pd.DataFrame(data=step_meta,
+                                    columns=['track_id', 'step_count', 'negetive_steps',
+                                             'positive_steps', 'step_height', 'max_intensity', 'length'])
+        step_meta_df.to_csv(f'{current_track_layer.name}_step_meta.csv')
+        steps_info.to_csv(f'{current_track_layer.name}_steps_info.csv')

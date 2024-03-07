@@ -5,9 +5,6 @@
         "src/napari_intensity_step_detection/base/plots.py",
         "src/napari_intensity_step_detection/base/sliders.py",
         "src/napari_intensity_step_detection/base/base_widget.ui",
-        "src/napari_intensity_step_detection/tracking_widget/tracking_widget.py",
-        "src/napari_intensity_step_detection/tracking_widget/__init__.py",
-
 
         "src/napari_intensity_step_detection/main_panel_widget/__init__.py",
         "src/napari_intensity_step_detection/main_panel_widget/general_plot.py",

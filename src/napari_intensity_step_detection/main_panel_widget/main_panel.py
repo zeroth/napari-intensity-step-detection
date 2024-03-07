@@ -39,19 +39,18 @@ class MainPanel(NLayerWidget):
         # create widgets
         self.walking_average = WalkingAverage(self)
         self.walking_average.layout().addStretch()
+        self.tool_box.addTab(self.walking_average, "Walking Average")
 
         self.quick_annotation = QuickAnnotation(self)
         self.quick_annotation.layout().addStretch()
+        self.tool_box.addTab(self.quick_annotation, "Quick Annotation")
 
         self.segmentation = Segmentation(self)
         self.segmentation.layout().addStretch()
+        self.tool_box.addTab(self.segmentation, "Segmentation")
 
         self.tracking = Tracking(self)
-        # self.tracking.layout().addStretch()
-
-        # add widgets to tool box
-        self.tool_box.addTab(self.walking_average, "Walking Average")
-        self.tool_box.addTab(self.quick_annotation, "Quick Annotation")
-        self.tool_box.addTab(self.segmentation, "Segmentation")
         self.tool_box.addTab(self.tracking, "Tracking")
-        # filtering
+
+    def add_tab(self, widget, name):
+        self.tool_box.addTab(widget, name)
