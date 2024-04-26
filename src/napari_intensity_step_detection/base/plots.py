@@ -101,7 +101,8 @@ class BaseMPLWidget(QWidget):
         # self.col = count
         # self.row = count
         # # print("add_multiple_axes", self.row, self.col)
-        self.grid_space = self.figure.add_gridspec(ncols=self.count, nrows=self.count, hspace=0, wspace=0)
+        self.grid_space = self.figure.add_gridspec(
+            ncols=self.count, nrows=self.count, hspace=0, wspace=0)
         # params = self.grid_space.get_subplot_params()
         self.axes = self.grid_space.subplots(sharex='col', sharey='row')
         # self.axes = self.figure.subplots(count, count, sharex=True, sharey=True,
@@ -139,7 +140,8 @@ class IntensityStepPlots(BaseMPLWidget):
 
         if len(intensity):
             _intensity = np.array(intensity)
-            self.axes.plot(_intensity.ravel(), label="Intensity", color=colors[0])
+            self.axes.plot(_intensity.ravel(),
+                           label="Intensity", color=colors[0])
 
         if len(fitx):
             _fitx = np.array(fitx)
@@ -204,13 +206,16 @@ class Histogram(BaseMPLWidget):
                 value = np.array(v).ravel()
                 # hist, _bin_e = np.histogram(value, bins=int(len(value)*0.1))
                 # self.axes.plot(hist, color=color, label=p, alpha=0.5)
-                hist, bins, binsize = utils.histogram(value, self.control.value())
+                hist, bins, binsize = utils.histogram(
+                    value, self.control.value())
                 # self.control.setValue(binsize)
-                self.axes.hist(value, bins=bins, edgecolor='black', linewidth=0.5, color=color, label=p, alpha=0.5)
+                self.axes.hist(value, bins=bins, edgecolor='black',
+                               linewidth=0.5, color=color, label=p, alpha=0.5)
                 self.axes.legend(loc='upper right')
         else:
             if len(self.data):
-                hist, bins, binsize = utils.histogram(self.data, self.control.value())
+                hist, bins, binsize = utils.histogram(
+                    self.data, self.control.value())
                 # self.control.setValue(binsize)
                 self.axes.hist(self.data, bins=bins, edgecolor='black',
                                linewidth=0.5, color=self.color, label=self.label)
@@ -219,12 +224,13 @@ class Histogram(BaseMPLWidget):
 
         # needed
         self.canvas.draw()
-    
+
     def setXAxisLabel(self, label):
         self.axes.set_xlabel(label)
-    
+
     def setYAxisLabel(self, label):
         self.axes.set_ylabel(label)
+
 
 class HistogramMultiAxes(BaseMPLWidget):
 

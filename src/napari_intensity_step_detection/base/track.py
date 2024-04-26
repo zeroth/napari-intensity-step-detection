@@ -1,5 +1,17 @@
-from qtpy.QtCore import Qt, QModelIndex, QAbstractTableModel, QVariant, Signal, QObject, QSortFilterProxyModel
-from qtpy.QtGui import QStandardItemModel, QStandardItem
+import qtpy
+if qtpy.API_NAME == 'PySide2':
+    from PySide2.QtCore import (
+        Qt, QModelIndex, QAbstractTableModel, QVariant, Signal, QObject, QSortFilterProxyModel)
+    from PySide2.QtGui import QStandardItemModel, QStandardItem
+elif qtpy.API_NAME == 'PySide6':
+    from PySide6.QtCore import (
+        Qt, QModelIndex, QAbstractTableModel, QVariant, Signal, QObject, QSortFilterProxyModel)
+    from PySide6.QtGui import QStandardItemModel, QStandardItem
+else:
+    from qtpy.QtCore import (Qt, QModelIndex, QAbstractTableModel,
+                             QVariant, Signal, QObject, QSortFilterProxyModel)
+    from qtpy.QtGui import QStandardItemModel, QStandardItem
+
 import numpy as np
 import pandas as pd
 from napari_intensity_step_detection import utils

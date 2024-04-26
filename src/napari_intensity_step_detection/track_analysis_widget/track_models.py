@@ -1,5 +1,13 @@
-from qtpy.QtCore import (Signal, QAbstractTableModel, Qt,
-                         QModelIndex, QVariant, QObject, QSortFilterProxyModel)
+import qtpy
+if qtpy.API_NAME == 'PySide2':
+    from PySide2.QtCore import (Signal, QAbstractTableModel, Qt,
+                                QModelIndex, QVariant, QObject, QSortFilterProxyModel)
+elif qtpy.API_NAME == 'PySide6':
+    from PySide6.QtCore import (Signal, QAbstractTableModel, Qt,
+                                QModelIndex, QVariant, QObject, QSortFilterProxyModel)
+else:
+    from qtpy.QtCore import (Signal, QAbstractTableModel, Qt,
+                             QModelIndex, QVariant, QObject, QSortFilterProxyModel)
 import pandas as pd
 
 
