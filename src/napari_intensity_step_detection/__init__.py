@@ -1,4 +1,4 @@
-__version__ = "0.0.6"
+__version__ = "0.0.7"
 from ._plugin_widget import PluginWidget
 
 __all__ = (
